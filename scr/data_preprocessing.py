@@ -3,13 +3,12 @@ from pathlib import Path
 import numpy as np
 
 from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import IsolationForest
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, RobustScaler
 from sklearn.decomposition import PCA
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectFromModel
 
 # File names
 BENIGN_DATA_FILE_NAMES = ["BenignTraffic.csv",
@@ -99,18 +98,6 @@ def binary_flags(df, flag_cols):
     new_df = df.drop(columns=flag_cols)
     return new_df
 
-def fill_na(fill_zero_cols, mean_impute_cols, mode_impute_cols):
-    imputer = ColumnTransformer([
-        ('zero', SimpleImputer(strategy='constant', fill_value=0), fill_zero_cols),
-        ('mean', SimpleImputer(strategy='mean'), mean_impute_cols),
-        ('cat', Pipeline([
-            ('mode', SimpleImputer(strategy='most_frequent')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False)),
-        ]), mode_impute_cols),
-    ], remainder='passthrough')
-
-    return imputer
-
 ## Extract Identifiers
 def extract_identifiers(df, id_cols, output_path=None):
     """Assign a permanent row id, split off identifier columns into a lookup table."""
@@ -141,39 +128,61 @@ class IsolationForestFilter(BaseEstimator, TransformerMixin):
         return X[mask]
 
 
-def clean_all_labels(sampled_df, fill_zero_cols, mean_impute_cols, mode_impute_cols, id_cols,
-                      contamination_benign=0.05, contamination_attack=0.01):
-    """Impute + encode globally, then run outlier removal within each label."""
+def _impute_per_label(df, feature_cols, fill_zero_cols, mean_impute_cols, mode_impute_cols):
+    """Fill NaNs within each label so attack and benign keep their own means."""
+    chunks = []
+    labels = df['label'].unique()
+
+    for label in labels:
+        sub = df.loc[df['label'] == label, feature_cols + ['id']].copy()
+
+        sub[fill_zero_cols] = sub[fill_zero_cols].fillna(0)
+        for c in mean_impute_cols:
+            sub[c] = sub[c].fillna(sub[c].mean())
+        for c in mode_impute_cols:
+            mode_val = sub[c].mode(dropna=True)
+            fill = mode_val.iloc[0] if not mode_val.empty else ''
+            sub[c] = sub[c].fillna(fill).map(str)
+
+        sub['label'] = label
+        chunks.append(sub)
+    return pd.concat(chunks, ignore_index=True)
+
+def _encode_categoricals(df, mode_impute_cols):
+    """Global one-hot encoding so every label sees the same category columns."""
+    ohe = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+    arr = ohe.fit_transform(df[mode_impute_cols])
+    encoded = pd.DataFrame(arr,
+                           columns=ohe.get_feature_names_out(mode_impute_cols),
+                           index=df.index)
+    return pd.concat([df.drop(columns=mode_impute_cols), encoded], axis=1)
+
+def _remove_outliers_per_label(df, contamination_benign=0.05, contamination_attack=0.01):
+    """Isolation Forest per label."""
+    final_df = []
+    for label in df['label'].unique():
+        sub = df[df['label'] == label].drop(columns='label')
+        c = contamination_benign if label == 'benign' else contamination_attack
+        kept = IsolationForestFilter(contamination=c).fit_transform(sub).copy()
+        kept['label'] = label
+        final_df.append(kept)
+    return pd.concat(final_df, ignore_index=True)
+
+def clean_all_labels(sampled_df, fill_zero_cols, mean_impute_cols, mode_impute_cols, id_cols):
+    """
+    Stage 1: Impute missing values per label
+    Stage 2: One-Hot Encoding on the entire DF
+    State 3: Outliers Removal using Isolation Forest per label
+        contamination = 0.05 for 'benign'
+        contamination = 0.01 for 'attack'
+    """
     drop_cols = id_cols + ['inter_arrival_time', 'label']
     feature_cols = [c for c in sampled_df.columns if c not in drop_cols and c != 'id']
+    df = _impute_per_label(sampled_df, feature_cols, fill_zero_cols, mean_impute_cols, mode_impute_cols)
+    df = _encode_categoricals(df, mode_impute_cols)
+    df = _remove_outliers_per_label(df)
+    return df
 
-    X = sampled_df[feature_cols + ['id']].copy()
-
-    # Some categorical cols in the raw CSVs mix ints with strings (e.g. http_response_code
-    # carries 200 and 'NeedManualLabel'). OneHotEncoder rejects mixed types, so coerce
-    # non-null values to str while keeping NaN intact for the imputer.
-    for c in mode_impute_cols:
-        X[c] = X[c].map(lambda v: str(v) if pd.notna(v) else v)
-
-    imputer = fill_na(fill_zero_cols, mean_impute_cols, mode_impute_cols)
-    X_imp = imputer.fit_transform(X)
-    out_cols = [c.split('__', 1)[-1] for c in imputer.get_feature_names_out()]
-    X_imp = pd.DataFrame(X_imp, columns=out_cols)
-    X_imp['label'] = sampled_df['label'].values
-
-    processed = []
-    for label in X_imp['label'].unique():
-        sub = X_imp[X_imp['label'] == label].drop(columns='label')
-        contamination = contamination_benign if label == 'benign' else contamination_attack
-        kept = IsolationForestFilter(contamination=contamination).fit_transform(sub)
-        if not isinstance(kept, pd.DataFrame):
-            kept = pd.DataFrame(kept, columns=sub.columns)
-        else:
-            kept = kept.copy()
-        kept['label'] = label
-        processed.append(kept)
-
-    return pd.concat(processed, ignore_index=True)
 
 ## Normalization/Scaling and Dimension Reduction
 def normalization():
@@ -198,22 +207,29 @@ def pca_contribution(pca, X):
     )
     weights.to_csv(OUTPUT_DIR/"pca_feature_contribution.csv")
 
-def LDA_reduction():
-    lda_pipeline = Pipeline([
-        ('scaler', RobustScaler()),
-        ('lda', LDA())
-    ])
 
-    return lda_pipeline
-
-def lda_contribution(lda, X):
-    # Per-feature weights for each of the discriminant directions
-    weights = pd.DataFrame(
-        lda.scalings_,
-        index=X.columns,
-        columns=[f"LD{i+1}" for i in range(lda.scalings_.shape[1])]
+def FOR_reduction(X, y, threshold=0.95, n_estimators=300, random_state=42):
+    scaler = RobustScaler()
+    X_scaled = scaler.fit_transform(X)
+    rf = RandomForestClassifier(
+        n_estimators=n_estimators, n_jobs=-1, random_state=random_state
     )
-    weights.to_csv(OUTPUT_DIR/"lda_feature_contribution.csv")
+    rf.fit(X_scaled, y)
+
+    # Rank features by importance, pick the top N that cover threshold cumulatively
+    importances = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
+    n_keep = (importances.cumsum() < threshold).sum() + 1
+    kept = importances.head(n_keep).index
+    dropped = importances.drop(kept)
+
+    # Keep the original column order in the returned matrix
+    mask = X.columns.isin(kept)
+    return X_scaled[:, mask], X.columns[mask], rf, dropped
+
+
+def for_contribution(rf, X):
+    contributions = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
+    contributions.to_csv(OUTPUT_DIR/"for_feature_importance.csv")
 
 def main():
     packet_df = load_all_datasets(PACKET_DATA_FILE_PATH)
@@ -275,7 +291,7 @@ def main():
                                 categorical_cols,
                                 id_cols)
 
-    # Keep id out of the feature matrix so it survives scaling/PCA/LDA and we can
+    # Keep id out of the feature matrix so it survives scaling/PCA/FOR and we can
     # join back to packet_data_ids.csv in Phase 3.
     ids = clean_df['id'].astype(int)
     y = clean_df['label']
@@ -298,16 +314,16 @@ def main():
     pca = pca_pipeline.named_steps['pca']
     pca_contribution(pca, X)
 
-    # LDA Reduced Data
-    lda_pipeline = LDA_reduction()
-    lda_arr = lda_pipeline.fit_transform(X, y)
-    lda_ds = pd.DataFrame(lda_arr, columns=[f"LD{i+1}" for i in range(lda_arr.shape[1])])
-    lda_ds['id'] = ids.values
-    lda_ds['label'] = y.values
-    lda_ds.to_csv(OUTPUT_DIR/"lda_data.csv", index=False)
+    # Random Forest feature selection (95% cumulative importance)
+    for_arr, selected_cols, rf, dropped = FOR_reduction(X, y, threshold=0.95)
 
-    lda = lda_pipeline.named_steps['lda']
-    lda_contribution(lda, X)
+    for_ds = pd.DataFrame(for_arr, columns=selected_cols)
+    for_ds['id'] = ids.values
+    for_ds['label'] = y.values
+    for_ds.to_csv(OUTPUT_DIR / "for_data.csv", index=False)
+
+    for_contribution(rf, X)
+    dropped.to_csv(OUTPUT_DIR / "for_dropped_features.csv", header=['importance'])
 
 
 if __name__ == "__main__":
