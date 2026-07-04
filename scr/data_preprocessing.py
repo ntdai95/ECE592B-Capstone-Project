@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import OneHotEncoder, RobustScaler, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # File names
 FILE_GROUPS = {
@@ -31,15 +31,13 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RANDOM_STATE = 42
 
-# ---------------------------------------------------------------------------
 # Packet-level relabeling
 #
 # The captures are labeled per-pcap, NOT per-packet (see raw data README:
 # "The data has not been labeled on a row basis"). Each attack capture also
 # recorded the background traffic of the ~45 testbed IoT devices, so most
-# rows in an "attack" file are behaviorally benign (e.g. only ~1% of XSS.csv
-# packets belong to the attack). We therefore relabel per packet using the
-# attack endpoints, identified empirically from the captures:
+# rows in an "attack" file are behaviorally benign. We therefore relabel per packet 
+# using the attack endpoints, identified empirically from the captures:
 #   dos:          192.168.137.66  sends >98k HTTP-flood requests at victims
 #   ddos:         192.168.137.139 is the victim; 13 sources flood it on :80
 #   brute_force:  192.168.137.65  runs SSH(:22)/RTSP(:554) dictionary attempts
@@ -47,7 +45,6 @@ RANDOM_STATE = 42
 #   dns_spoofing: dc:a6:32:dc:27:d5 (Raspberry Pi) ARP-spoofs the gateway IP
 #                 (192.168.137.1) and forges DNS answers -> match by MAC,
 #                 since the MITM attacker impersonates other hosts' IPs.
-# ---------------------------------------------------------------------------
 ATTACK_RULES = {
     'dos':          {'ips':  ['192.168.137.66']},
     'ddos':         {'ips':  ['192.168.137.139']},
@@ -57,11 +54,6 @@ ATTACK_RULES = {
 }
 
 def relabel_packets(df, group):
-    """Convert a capture-level label into per-packet labels.
-
-    Packets involving the attack endpoints keep the attack label; every
-    other packet in the capture is testbed background traffic -> 'benign'.
-    """
     if group not in ATTACK_RULES:
         df['label'] = group
         return df
@@ -149,7 +141,7 @@ def engineer_volumetric_features(df):
         df[f'{scope}_rate_5'] = c5 / 5.0                     # packets/second
     return df
 
-# --- Endpoint semantics + repetition features (brute-force oriented) -------
+# Endpoint semantics + repetition features (brute-force oriented)
 # Ports 554 (RTSP) and 8009 are included: the dictionary attack in this
 # dataset targets them alongside SSH (22).
 LOGIN_OR_WEB_PORTS = frozenset({21, 22, 23, 80, 443, 554, 8009, 8080, 8443})
@@ -186,12 +178,6 @@ def _keys(df, cols):
 
 def _rolling_group_count(df, cols, window):
     """Packets from the same group among the last `window` rows (inclusive).
-
-    Fully vectorized, O(n log n), replacing the O(n*window) row-scanning
-    loop from the notebook prototype. Each row is encoded as
-    group_id * (n + window) + row_position: the gap between groups is wider
-    than any window, so one global binary search counts, per row, how many
-    same-group rows fall inside [position - window + 1, position].
     """
     n = len(df)
     group_id = df.groupby(_keys(df, cols), sort=False).ngroup().to_numpy(np.int64)
@@ -206,9 +192,7 @@ def engineer_repetition_features(df):
     one source hammering one destination:port, especially login services).
 
     Counts run over the sampled row order (no timestamp survives
-    preprocessing). Labels are never used, and row position itself is
-    internal only: rows are grouped by label after sampling, so exposing
-    absolute position as a feature would leak the label.
+    preprocessing).
     """
     eps = 1e-9
     src = df.groupby(_keys(df, ['src_ip']), sort=False).cumcount() + 1
@@ -404,7 +388,8 @@ ALWAYS_KEEP = [
     'stream_max_dns_ans_qry_ratio', 'stream_dns_answer_count',
 ]
 
-def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_state=42):
+def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_state=42,
+                              always_keep=None):
     """
     Feature Selection using Forest/Random Forest method.
     Selecting the most important features that explain 95% of the prediction cummulatively.
@@ -430,8 +415,9 @@ def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_sta
         kept_cols.append(importances.head(n_keep).index)
         contributions.append(importances.rename(attack))
 
+    whitelist = set(ALWAYS_KEEP) | set(always_keep or [])
     kept_cols = sorted(set().union(*kept_cols)              # union across attacks, no redundant features
-                       | {c for c in ALWAYS_KEEP if c in X.columns})
+                       | {c for c in whitelist if c in X.columns})
     dropped_cols = [c for c in X.columns if c not in kept_cols]
 
     X_final = StandardScaler().fit_transform(X[kept_cols])
@@ -466,12 +452,15 @@ def main():
     )
 
     # Feature engineering
+    pre_engineering_cols = set(sampled_df.columns)
     sampled_df = engineer_content_features(sampled_df)
     sampled_df = engineer_volumetric_features(sampled_df)
     sampled_df = engineer_endpoint_semantics(sampled_df)   # these three need id_cols,
     sampled_df = engineer_repetition_features(sampled_df)  # so they run before
     sampled_df = propagate_stream_content(sampled_df)      # clean_all_labels drops them
     sampled_df = drop_capture_artifacts(sampled_df)
+    engineered_cols = sorted(set(sampled_df.columns) - pre_engineering_cols)
+    print(f"[feature-eng] {len(engineered_cols)} engineered features (RF-exempt)")
 
     # Create Binary Flags for Categorical Columns
     flag_cols = [
@@ -527,7 +516,8 @@ def main():
 
 
     # Random Forest feature selection (95% cumulative importance)
-    for_arr, selected_cols = _FOR_reduction_per_attack(X, y, threshold=0.95)
+    for_arr, selected_cols = _FOR_reduction_per_attack(X, y, threshold=0.95,
+                                                       always_keep=engineered_cols)
 
     for_ds = pd.DataFrame(for_arr, columns=selected_cols)
     for_ds['id'] = ids.values
