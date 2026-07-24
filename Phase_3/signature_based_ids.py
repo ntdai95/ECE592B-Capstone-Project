@@ -200,14 +200,13 @@ def reclassify_phase2_alerts(model, feature_cols, task_31_scores_file=None):
     print(f"Saved complete re-classification breakdown to {output_path}")
 
 
-def main():
-    # FIX ONCE 3.1 is available
-    task_31_scores_file = None
-    
+def run_experiment(task_31_scores_file, run_name):
+    print(f"Model Version: {run_name.upper()}")
+
     # Load preprocessed flow dataset
     df, X, y, feature_cols = load_supervised_flow_data(task_31_scores_file)
 
-    # Perform Stratified Train / Validation / Test Split (70% Train, 15% Val, 15% Test)
+    # Perform Stratified Train / Validation / Test Split (60% Train, 20% Val, 20% Test)
     X_train, X_temp, y_train, y_temp = train_test_split(
         X, y, test_size=0.40, stratify=y, random_state=RANDOM_STATE
     )
@@ -223,9 +222,24 @@ def main():
 
     # Re-Classify Phase 2 Alerts to Compute False Positive Reduction Rate
     reclassify_phase2_alerts(
-        model, feature_cols, 
+        model, 
+        feature_cols, 
         task_31_scores_file
     )
+
+
+def main():
+    task_31_scores_file = FLOW_DATA_DIR / "task3_1_flow_anomaly_scores.csv" 
+
+    # Baseline that doesn't use the 3.1 features
+    run_experiment(task_31_scores_file=None, run_name="Baseline (No Task 3.1 Features)")
+
+    # Augmented with the 3.1 features
+    run_experiment(task_31_scores_file=task_31_scores_file, run_name="Augmented Model (With Task 3.1 Features)")
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
