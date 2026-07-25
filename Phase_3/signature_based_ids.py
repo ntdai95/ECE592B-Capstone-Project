@@ -28,7 +28,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RANDOM_STATE = 1
 
-# Label mapping for multi-class classification (5 attack types + benign)
+# Label mapping for multi-class classification
 LABEL_MAP = {
     'benign': 0,
     'dos': 1,
@@ -46,7 +46,6 @@ def load_supervised_flow_data(task_31_scores_file=None):
     if not data_path.exists():
         raise FileNotFoundError(f"Missing supervised data file at {data_path}")
 
-    print(f"[task-3.3] Loading supervised flow dataset from {data_path.name}...")
     df = pd.read_csv(data_path)
 
     # Optional Task 3.1 Feature Integration (Ablation Test)
@@ -66,35 +65,58 @@ def load_supervised_flow_data(task_31_scores_file=None):
 
 
 def train_xgboost_classifier(X_train, y_train, X_val, y_val):
-    # Train XGBoost using sample weighting for class imbalance
-    print("[task-3.3] Computing sample weights to handle class imbalance...")
     sample_weights = compute_sample_weight("balanced", y_train)
 
-    model = xgb.XGBClassifier(
-        objective="multi:softprob",
-        num_class=len(LABEL_MAP),
-        n_estimators=300,
-        max_depth=6,
-        learning_rate=0.05,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        random_state=RANDOM_STATE,
-        n_jobs=-1,
-        eval_metric="mlogloss",
-        early_stopping_rounds=20
-    )
+    # Define hyperparameter grid for tuning
+    max_depths = [4, 6, 8]
+    gammas = [0.0, 0.1, 0.3]
 
-    print("[task-3.3] Training XGBoost model...")
+    best_score = float("inf")
+    best_model = None
+    best_params = {}
+
+    print("[task-3.3] Tuning XGBoost hyperparameters (gamma, max_depth)...")
     start_time = time.time()
-    model.fit(
-        X_train, y_train,
-        sample_weight=sample_weights,
-        eval_set=[(X_val, y_val)],
-        verbose=False
-    )
+
+    for depth in max_depths:
+        for g in gammas:
+            print(f"Testing max_depth={depth}, gamma={g}...")
+            
+            candidate_model = xgb.XGBClassifier(
+                objective="multi:softprob",
+                num_class=len(LABEL_MAP),
+                n_estimators=300,
+                max_depth=depth,
+                gamma=g,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=RANDOM_STATE,
+                n_jobs=-1,
+                eval_metric="mlogloss",
+                early_stopping_rounds=20
+            )
+
+            candidate_model.fit(
+                X_train, y_train,
+                sample_weight=sample_weights,
+                eval_set=[(X_val, y_val)],
+                verbose=False
+            )
+
+            # Get optimal score achieved on validation set
+            val_loss = candidate_model.best_score if hasattr(candidate_model, "best_score") else float("inf")
+
+            if val_loss < best_score:
+                best_score = val_loss
+                best_model = candidate_model
+                best_params = {'max_depth': depth, 'gamma': g}
+
     train_duration = time.time() - start_time
-    print(f"[task-3.3] Training completed in {train_duration:.2f} seconds.")
-    return model
+    print(f"[task-3.3] Tuning completed in {train_duration:.2f} seconds.")
+    print(f"[task-3.3] Optimal Parameters Found: max_depth={best_params['max_depth']}, gamma={best_params['gamma']} (Validation Loss: {best_score:.4f})")
+    
+    return best_model
 
 
 def evaluate_supervised_stage(model, X_test, y_test):
@@ -175,7 +197,6 @@ def reclassify_phase2_alerts(model, feature_cols, task_31_scores_file=None):
     inference_duration = time.time() - start_time
 
     # Calculate False Positive Reduction & Attack Retention Metrics
-    # Ground truth label of the packet that triggered Phase 2 alert is stored in 'packet_label'
     benign_phase2_fps = alerts_df[alerts_df["packet_label"] == "benign"]
     attack_phase2_alerts = alerts_df[alerts_df["packet_label"] != "benign"]
 
@@ -207,25 +228,17 @@ def run_experiment(task_31_scores_file, run_name):
     df, X, y, feature_cols = load_supervised_flow_data(task_31_scores_file)
 
     # Perform Stratified Train / Validation / Test Split (60% Train, 20% Val, 20% Test)
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.40, stratify=y, random_state=RANDOM_STATE
-    )
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.50, stratify=y_temp, random_state=RANDOM_STATE
-    )
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.40, stratify=y, random_state=RANDOM_STATE)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.50, stratify=y_temp, random_state=RANDOM_STATE)
 
-    # Train XGBoost Model
+    # Train XGBoost Model with Hyperparameter Tuning
     model = train_xgboost_classifier(X_train, y_train, X_val, y_val)
 
     # Evaluate Supervised Model Performance
     evaluate_supervised_stage(model, X_test, y_test)
 
     # Re-Classify Phase 2 Alerts to Compute False Positive Reduction Rate
-    reclassify_phase2_alerts(
-        model, 
-        feature_cols, 
-        task_31_scores_file
-    )
+    reclassify_phase2_alerts(model, feature_cols, task_31_scores_file)
 
 
 def main():
@@ -236,10 +249,6 @@ def main():
 
     # Augmented with the 3.1 features
     run_experiment(task_31_scores_file=task_31_scores_file, run_name="Augmented Model (With Task 3.1 Features)")
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
