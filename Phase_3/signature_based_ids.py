@@ -119,7 +119,7 @@ def train_xgboost_classifier(X_train, y_train, X_val, y_val):
     return best_model
 
 
-def evaluate_supervised_stage(model, X_test, y_test):
+def evaluate_supervised_stage(model, X_test, y_test, task_31_scores_file):
     # Evaluate model
     start_time = time.time()
     y_pred = model.predict(X_test)
@@ -133,6 +133,13 @@ def evaluate_supervised_stage(model, X_test, y_test):
     target_names = [INV_LABEL_MAP[i] for i in sorted(INV_LABEL_MAP.keys())]
     print(classification_report(y_test, y_pred, target_names=target_names, digits=4))
 
+    if task_31_scores_file:
+        conf_matrix_file_name = "augmented_xgboost_confusion_matrix.png"
+        roc_file_name = "augmented_xgboost_roc_curves.png"
+    else:
+        conf_matrix_file_name = "xgboost_confusion_matrix.png"
+        roc_file_name = "xgboost_roc_curves.png"
+
     # Save Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
     plt.figure(figsize=(9, 7))
@@ -141,7 +148,7 @@ def evaluate_supervised_stage(model, X_test, y_test):
     plt.ylabel("True Label")
     plt.xlabel("Predicted Label")
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "xgboost_confusion_matrix.png", dpi=300)
+    plt.savefig(OUTPUT_DIR / conf_matrix_file_name, dpi=300)
     plt.close()
 
     # Save Multi-Class ROC Curves
@@ -160,7 +167,7 @@ def evaluate_supervised_stage(model, X_test, y_test):
     plt.title("Task 3.3 XGBoost Multi-Class ROC Curves")
     plt.legend(loc="lower right")
     plt.tight_layout()
-    plt.savefig(OUTPUT_DIR / "xgboost_roc_curves.png", dpi=300)
+    plt.savefig(OUTPUT_DIR / roc_file_name, dpi=300)
     plt.close()
 
 
@@ -174,10 +181,13 @@ def reclassify_phase2_alerts(model, feature_cols, task_31_scores_file=None):
     alerts_df = pd.read_csv(alerts_file)
     print(f"Loaded {len(alerts_df):,} Phase 2 alert flow records for re-evaluation.")
 
+    output_file_name = "reclassified_phase2_alerts.csv"
+
     # Optional Task 3.1 Feature Integration for Alerts
     if task_31_scores_file and Path(task_31_scores_file).exists():
         t31_df = pd.read_csv(task_31_scores_file)
         alerts_df = alerts_df.merge(t31_df, on="Flow ID", how="left").fillna(0)
+        output_file_name = "augmented_reclassified_phase2_alerts.csv"
 
     X_alerts_raw = alerts_df[feature_cols].copy()
 
@@ -216,7 +226,7 @@ def reclassify_phase2_alerts(model, feature_cols, task_31_scores_file=None):
         print(f"True Attacks Retained by Stage 2: {retained_attacks:,}/{len(attack_phase2_alerts):,} ({retention_rate:.2f}%)")
 
     # Export results
-    output_path = OUTPUT_DIR / "reclassified_phase2_alerts.csv"
+    output_path = OUTPUT_DIR / output_file_name
     alerts_df.to_csv(output_path, index=False)
     print(f"Saved complete re-classification breakdown to {output_path}")
 
@@ -235,7 +245,7 @@ def run_experiment(task_31_scores_file, run_name):
     model = train_xgboost_classifier(X_train, y_train, X_val, y_val)
 
     # Evaluate Supervised Model Performance
-    evaluate_supervised_stage(model, X_test, y_test)
+    evaluate_supervised_stage(model, X_test, y_test, task_31_scores_file)
 
     # Re-Classify Phase 2 Alerts to Compute False Positive Reduction Rate
     reclassify_phase2_alerts(model, feature_cols, task_31_scores_file)
