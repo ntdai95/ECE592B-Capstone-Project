@@ -116,13 +116,12 @@ def locate_corresponding_flows(packet_identifiers_df, aggregated_flows_df):
     print(f"[flow-correspondence] Matched {len(matched_df):,}/{len(packet_identifiers_df):,} packets to a flow-level record")
     return matched_df
 
-# Task 3.2: Create Function for Random Sampling (reused the same function as Task 1.1, reused)
+# Task 3.2: Create Function for Random Sampling (reused the same function as Task 1.1)
 def random_sampling(df, n_samples, random_state=None):
-    if len(df) >= n_samples:
-        sampled_df = df.sample(n=n_samples, random_state=random_state)
-        return sampled_df
-    else:
-        raise ValueError("Don't have enough samples in the dataframe.")
+    if len(df) < n_samples:
+        return df.copy()
+
+    return df.sample(n=n_samples, random_state=random_state)
 
 def subsample_by_label(flow_df, n_benign=200_000, n_attack=1200, random_state=RANDOM_STATE):
     label_dfs = {label: flow_df[flow_df['label'] == label] for label in flow_df['label'].unique()}
@@ -203,20 +202,19 @@ def main():
     phase2_alert_flows_df.to_csv(OUTPUT_DIR / "phase2_alert_corresponding_flows.csv", index=False)
     print(f"Saved {len(phase2_alert_flows_df):,} flow-level rows corresponding to Phase 2 alerts")
 
-    # Task 3.2: generating a second random dataset directly from the flow-level data, using the same proportions/sampling
-    # function as Task 1.1. Rebuilds the aggregated flows rather than reusing the table above.
-    aggregated_flows_df = build_aggregated_flows()
+    # Task 3.2: generate a second random dataset directly from the flow-level data, using the same
+    # proportions/sampling function as Task 1.1. Reuses the aggregated table built above.
     flow_df = subsample_by_label(aggregated_flows_df)
     flow_df = impute_missing_feature_values(flow_df)
-    flow_df = remove_outliers_per_label(flow_df)
-    flow_ids = flow_df["Flow ID"].values
     feature_columns = []
     for column_name in flow_df.columns:
         if column_name not in ["Flow ID", "label"]:
             feature_columns.append(column_name)
 
+    flow_df[feature_columns] = log_transform_skewed(flow_df[feature_columns])
+    flow_df = remove_outliers_per_label(flow_df)
+    flow_ids = flow_df["Flow ID"].values
     X = flow_df[feature_columns]
-    X = log_transform_skewed(X)
     y = flow_df["label"]
 
     ## Normalized Original Dataset (no dimension reduction)
