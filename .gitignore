@@ -25,6 +25,12 @@ runs/
 logs/
 *.log
 .mplcache/
+*.npz
+*.parquet
+
+# Captures and intermediate datasets
+*.pcap
+*.pcapng
 
 # Jupyter
 .ipynb_checkpoints/
@@ -32,3 +38,16 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
