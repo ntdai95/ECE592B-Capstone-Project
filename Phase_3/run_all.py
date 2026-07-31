@@ -1,27 +1,26 @@
 """One-shot Phase 3 pipeline.
 
-Runs nine stages in order: build the context features, build the splits, train
-the six model families, retrain them all without the Task 3.1 columns, then run
-the validity checks (hard-class diagnostics, capture-session holdout with and
+Builds the context features and the shared split, trains the five binary models
+and the multiclass XGBoost, retrains them all without the Task 3.1 columns, then
+runs the validity checks (hard-class diagnostics, capture-session holdout with and
 without context, the context ablation, and the causality/label-free/budget
 audit). Finishes by printing the full results view via show_results.py, which
 also writes the two summary CSVs.
 
-The ablation stage is a second full training pass, so it roughly doubles the
-training time. It is what lets section 5 answer "did Phase 2 actually help the
-flow classifier" for every model rather than for XGBoost alone.
+The ablation stage is a second training pass, so it roughly doubles the training
+time. It is what lets the report answer "did Phase 2 actually help the flow
+classifier" per model rather than for one model alone.
 
-    python Phase_3/run_all.py                  # runs everything fresh (~30 min)
+    python Phase_3/run_all.py                  # runs everything fresh
     python Phase_3/run_all.py --skip-existing  # only runs the stages whose output is missing
 
 Model metrics accumulate in results/results.json, one key per model; the audits
 write their own JSON alongside it. Any single stage can be rerun on its own.
 
-The Phase 2 packet detectors are notebooks and are not driven from here, but
-they write into the same results.json under "phase2_*" keys, so whatever has
-been recorded from them appears in the final printout alongside Phase 3.
-Stage order matters: build_context_features.py must run before prep.py, and the
-training scripts must run before the audits.
+The Phase 2 packet detectors write into the same results.json under "phase2_*"
+keys, so whatever has been recorded from them appears in the final printout
+alongside Phase 3. Stage order matters: build_context_features.py must run before
+prep.py, and the training scripts must run before the audits.
 """
 import argparse
 import json
@@ -30,21 +29,22 @@ import sys
 import time
 from pathlib import Path
 
-from common import RESULTS_DIR as OUT
+from evaluation import RESULTS_DIR as OUT
 
 CODE = Path(__file__).resolve().parent
 
 STAGES = [
     (["build_context_features.py"], "context_features.parquet"),
     (["prep.py"], "splits.npz"),
-    (["train_models.py"], "results.json#blend_binary_multiclass"),
-    (["train_models.py", "--drop-anomaly"],
-     "results.json#blend_binary_multiclass__no_anomaly"),
+    (["train_models.py"], "results.json#voting_soft"),
+    (["multiclass_xgboost.py"], "results.json#multiclass_xgb__no_anomaly"),
+    (["train_models.py", "--drop-anomaly"], "results.json#voting_soft__no_anomaly"),
     (["diagnose_hard_classes.py"], "hard_class_diagnostics.json"),
     (["eval_session_holdout.py"], "session_holdout_results.json"),
     (["eval_session_holdout.py", "--features", "base"], "session_holdout_base_results.json"),
     (["exp_context.py"], "exp_context_results.json"),
     (["verify_context_integrity.py"], "feature_importance.csv"),
+    (["two_stage_system.py"], "results.json#two_stage_system"),
 ]
 
 

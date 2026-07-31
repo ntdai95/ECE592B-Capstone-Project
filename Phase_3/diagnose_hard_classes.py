@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from common import FLOW_DATA_DIR, OUT
+from evaluation import FLOW_DATA_DIR, OUT
 
 
 def load():

@@ -325,13 +325,6 @@ def _impute_per_label(df, feature_cols, fill_zero_cols, mean_impute_cols, mode_i
     return pd.concat(chunks, ignore_index=True)
 
 def _encode_categoricals(df, mode_impute_cols):
-    """Global one-hot encoding so every label sees the same category columns.
-
-    min_frequency groups categories seen in <0.1% of packets (dozens of rare
-    highest_layer protocols) into one 'infrequent' column. Otherwise ~60
-    near-constant dummies flood the feature space and dilute the distance
-    metric k-means relies on.
-    """
     ohe = OneHotEncoder(handle_unknown='infrequent_if_exist',
                         sparse_output=False, min_frequency=0.001)
     arr = ohe.fit_transform(df[mode_impute_cols])
@@ -369,14 +362,6 @@ def clean_all_labels(sampled_df, fill_zero_cols, mean_impute_cols, mode_impute_c
 
 ## Normalization/Scaling and Dimension Reduction
 def normalization():
-    """log1p (applied upstream) + z-scoring.
-
-    StandardScaler instead of RobustScaler: many columns here are zero-
-    inflated, so their IQR is 0 and RobustScaler leaves them unscaled at
-    raw magnitude. After log1p the tails are tame enough for z-scoring,
-    which gives every feature comparable weight in k-means distances and
-    autoencoder reconstruction loss.
-    """
     pipeline = Pipeline([
         ('scaler', StandardScaler())
     ])

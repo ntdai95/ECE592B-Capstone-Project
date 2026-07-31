@@ -1,23 +1,16 @@
-"""Connection-window (multi-flow context) features.
+"""Connection-window (multi-flow context) features, following the KDD'99
+count / srv_count / same_srv_rate family. Per source and destination IP, over
+trailing 2s and 60s windows, plus statistics over the previous 100 connections.
 
-Brute force, DNS spoofing and XSS are multi-flow phenomena. A single flow of a
-password-guessing campaign is indistinguishable from a normal login. Classic IDS
-feature sets (KDD'99 "count", "srv_count", "same_srv_rate", and every
-CICIDS-derived pipeline since) add per-source connection-window statistics for
-exactly this reason.
-
-Computed over the full capture of 886,621 flows rather than the 195,953-row
-modelling sample, because that is what a live detector observes, then joined back
-to the modelling rows by Flow ID.
-
-Windows are strictly causal: only flows at or before the current flow's timestamp
-contribute, so no future information enters a feature.
+Computed over the full capture (what a live detector observes) and joined back to
+the modelling rows by Flow ID. Strictly causal: only flows at or before the
+current flow's timestamp contribute, so no future information enters a feature.
 """
 import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from common import FLOW_DATA_DIR, OUT
+from evaluation import FLOW_DATA_DIR, OUT
 
 WINDOWS = [2, 60]
 LAST_N = 100

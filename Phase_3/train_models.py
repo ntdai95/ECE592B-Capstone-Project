@@ -1,21 +1,23 @@
-"""Train the Phase 3 flow-level classifiers.
+"""Train the five binary Phase 3 flow-level classifiers.
 
-Every model is scored through the shared operating-point rule in common.py, so
-no model can grade itself on a different threshold. Results accumulate into one
+Random Forest, binary XGBoost, Linear SVM, MLP, and a soft-voting ensemble of
+the strongest three. The multiclass XGBoost lives in multiclass_xgboost.py. Every
+model is scored through the shared operating-point rule in evaluation.py, so no
+model can grade itself on a different threshold, and results accumulate into one
 results.json keyed by model name.
 
-Order matters: the ensembles read the four fitted base models off disk, and the
-blend reads the binary XGBoost, so `--models all` runs them in dependency order.
+Order matters: the ensemble reads the fitted base models off disk, so `--models
+all` runs them in dependency order.
 
     python Phase_3/train_models.py --models all
     python Phase_3/train_models.py --models rf xgb
     python Phase_3/train_models.py --drop-anomaly
 
---drop-anomaly retrains the same eight models with the three Task 3.1 columns
-removed and nothing else changed, saving under "<model>__no_anomaly" keys so the
-contribution of stage one is measured per model rather than argued from XGBoost
-alone. The joblib filenames are suffixed too, so an ablation run cannot
-overwrite the models the leaderboard and the audits read.
+--drop-anomaly retrains the same models with the three Task 3.1 columns removed
+and nothing else changed, saving under "<model>__no_anomaly" keys so the
+contribution of stage one is measured per model. The joblib filenames are
+suffixed too, so an ablation run cannot overwrite the models the leaderboard and
+the audits read.
 """
 import argparse
 import json
@@ -32,9 +34,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
-from common import OUT, Timer, evaluate_and_save, load_splits
-
-CLASSES = ["benign", "brute_force", "ddos", "dns_spoofing", "dos", "xss"]
+from evaluation import OUT, Timer, evaluate_and_save, load_splits
 
 ANOMALY_COLS = ["flow_anomaly_score", "flow_anomaly_flag", "has_anomaly_score"]
 
@@ -66,13 +66,9 @@ def drop_anomaly_columns(d):
 
 
 def val_halves(d, seed=1):
-    """Split validation into a fitting half and a threshold half.
-
-    Anything fitted on the validation set - the SVM calibrator, the stacking
-    meta-learner - makes its own validation scores in-sample. A threshold read
-    off those scores sits below the true operating point and the FPR budget can
-    then overrun on test. Keeping the two roles on disjoint halves removes that.
-    """
+    """Split validation into a fitting half and a threshold half. The SVM
+    calibrator fits on the first half; the threshold is read off the second, so
+    it is not measured on scores the calibrator has already seen."""
     idx = np.arange(len(d["y_va"]))
     return train_test_split(idx, test_size=0.5, random_state=seed,
                             stratify=d["t_va"])
@@ -159,81 +155,27 @@ def train_mlp(d):
 
 
 def base_model_scores(d):
+    """Attack probabilities of the three strongest base models (RF, XGB, MLP)."""
     rf = joblib.load(model_path("model_rf"))
     xgb = joblib.load(model_path("model_xgb"))
     mlp = joblib.load(model_path("model_mlp"))
-    svm = joblib.load(model_path("model_svm"))
 
     def probs(X):
-        s = svm["cal"].predict_proba(svm["svm"].decision_function(X).reshape(-1, 1))[:, 1]
         return np.column_stack([
             rf.predict_proba(X)[:, 1],
             xgb.predict_proba(X)[:, 1],
             mlp.predict_proba(X)[:, 1],
-            s,
         ])
     return probs(d["X_va"]), probs(d["X_te"])
 
 
 def train_ensemble(d):
-    """voting_soft averages the probabilities of RF, XGB and MLP, the strongest
-    three. stacking_lr fits a logistic-regression meta-learner on the
-    validation-set predictions of all four.
-
-    voting_soft fits nothing on validation, so it keeps the whole set. The
-    meta-learner fits on the first half and is thresholded on the second.
-    """
+    """Soft voting: average the attack probabilities of RF, XGB and MLP. It fits
+    nothing on validation, so it keeps the whole validation set for thresholding."""
     with Timer() as t:
         P_va, P_te = base_model_scores(d)
-    va_vote, te_vote = P_va[:, :3].mean(axis=1), P_te[:, :3].mean(axis=1)
+    va_vote, te_vote = P_va.mean(axis=1), P_te.mean(axis=1)
     evaluate_and_save(key("voting_soft"), d["y_va"], va_vote, d["y_te"], te_vote, d["t_te"], t.dt)
-    fit_i, thr_i = val_halves(d)
-    meta = LogisticRegression(class_weight="balanced")
-    meta.fit(P_va[fit_i], d["y_va"][fit_i])
-    va_st = meta.predict_proba(P_va[thr_i])[:, 1]
-    te_st = meta.predict_proba(P_te)[:, 1]
-    evaluate_and_save(key("stacking_lr"), d["y_va"][thr_i], va_st, d["y_te"], te_st, d["t_te"], t.dt)
-    joblib.dump(meta, model_path("model_stack_meta"), compress=3)
-
-
-def train_multiclass(d):
-    """Multiclass XGBoost (6-way softmax) plus an equal-weight blend with the
-    shared binary model.
-
-    A binary attack/benign objective satisfies most of its loss on the two
-    volumetric classes (DDoS, DoS) and leaves the boundary for the hard classes
-    loosely fitted. A 6-way softmax forces class-discriminative structure; the
-    attack score is then 1 - P(benign). Per-class AUC improves for every hard
-    class (brute force .962->.969, DNS spoofing .894->.908, XSS .947->.960), and
-    averaging the two scores gives the same recall as the binary model for fewer
-    false positives.
-    """
-    cmap = {c: i for i, c in enumerate(CLASSES)}
-    y_tr_m = np.array([cmap[c] for c in d["t_tr"]])
-
-    w = np.ones(len(y_tr_m))
-    w[y_tr_m > 0] = float((y_tr_m == 0).sum() / (y_tr_m > 0).sum())
-
-    model = XGBClassifier(
-        n_estimators=400, max_depth=8, learning_rate=0.1,
-        subsample=0.8, colsample_bytree=0.8, min_child_weight=1,
-        reg_lambda=1.0, tree_method="hist",
-        objective="multi:softprob", num_class=len(CLASSES),
-        n_jobs=-1, random_state=1,
-    )
-    with Timer() as t:
-        model.fit(d["X_tr"], y_tr_m, sample_weight=w)
-
-    P_va = model.predict_proba(d["X_va"])
-    P_te = model.predict_proba(d["X_te"])
-    va, te = 1 - P_va[:, 0], 1 - P_te[:, 0]
-    evaluate_and_save(key("multiclass_xgb"), d["y_va"], va, d["y_te"], te, d["t_te"], t.dt)
-    joblib.dump(model, model_path("model_multiclass"), compress=3)
-
-    xgb = joblib.load(model_path("model_xgb"))
-    bva = 0.5 * va + 0.5 * xgb.predict_proba(d["X_va"])[:, 1]
-    bte = 0.5 * te + 0.5 * xgb.predict_proba(d["X_te"])[:, 1]
-    evaluate_and_save(key("blend_binary_multiclass"), d["y_va"], bva, d["y_te"], bte, d["t_te"], t.dt)
 
 
 TRAINERS = {
@@ -242,7 +184,6 @@ TRAINERS = {
     "svm": train_svm,
     "mlp": train_mlp,
     "ensemble": train_ensemble,
-    "multiclass": train_multiclass,
 }
 
 

@@ -19,13 +19,11 @@ import csv
 import json
 from pathlib import Path
 
-from common import RESULTS_DIR as OUT
+from evaluation import RESULTS_DIR as OUT
 W = 124
 
 NICE = {
-    "blend_binary_multiclass": "Blend (binary + multiclass)",
     "multiclass_xgb": "Multiclass XGBoost",
-    "stacking_lr": "Stacking (LR meta)",
     "xgboost": "XGBoost",
     "voting_soft": "Soft Voting (RF+XGB+MLP)",
     "random_forest": "Random Forest",
@@ -116,14 +114,8 @@ def t_phase2(p2):
 
 
 def t_phase2_sweeps(p2):
-    """Print each detector's validation hyperparameter sweep, if it recorded one.
-
-    The selected setting alone invites the question of what the search covered
-    and whether a neighbouring value was better. Printing the grid answers it
-    from the saved numbers, and shows where PR-AUC and ROC-AUC disagree: on a
-    3% positive rate ROC-AUC keeps improving well past the point where alert
-    precision has started to fall, so the two rank the same grid differently.
-    """
+    """Print each detector's validation hyperparameter sweep, if it recorded one,
+    so the selected setting can be read against its neighbours."""
     for name, r in p2:
         sweep = r.get("params", {}).get("sweep")
         if not isinstance(sweep, dict) or not sweep:
@@ -268,13 +260,9 @@ def t_context():
 
 
 def t_anomaly_ablation():
-    """Per-model Task 3.1 ablation, from the "<model>__no_anomaly" keys.
-
-    Section 4 answers the same question with one model. Reading a single model's
-    delta invites the reply that XGBoost happens not to need the columns while
-    another architecture would. Retraining all eight without them removes that
-    reply: if the contribution were real it would have to show up somewhere.
-    """
+    """Per-model Task 3.1 ablation, from the "<model>__no_anomaly" keys: every
+    model retrained without the three anomaly columns, so the contribution is
+    measured across architectures rather than argued from one."""
     f = OUT / "results.json"
     if not f.exists():
         return
@@ -443,6 +431,32 @@ def t_session():
     print("  leaderboard WITH this table.")
 
 
+def t_two_stage():
+    """Combined system: stage 1 autoencoder alerts re-checked by stage 2."""
+    f = OUT / "results.json"
+    if not f.exists():
+        return
+    d = json.loads(f.read_text()).get("two_stage_system")
+    if not d:
+        return
+    m = d["combined"]
+    stage2 = NICE.get(d.get("stage2_detector", ""), d.get("stage2_detector", "flow classifier"))
+    print()
+    print("=" * W)
+    print(f"  FINAL TWO-STAGE SYSTEM  (stage 1 autoencoder -> stage 2 {stage2})")
+    print("=" * W)
+    print("  Final decision: attack only if stage 1 alerts AND stage 2 confirms.")
+    rule()
+    print(f"  Overall accuracy {m['accuracy'] * 100:6.2f}%    precision {m['precision'] * 100:6.2f}%"
+          f"    recall {m['recall'] * 100:6.2f}%    F1 {m['f1'] * 100:6.2f}%    FPR {m['fpr'] * 100:5.2f}%")
+    print(f"  Confusion (attack=+): TP={m['tp']}  FP={m['fp']}  FN={m['fn']}  TN={m['tn']}")
+    print(f"  False positives: {d['stage1_fp']} (stage 1 alone) -> {m['fp']} (after stage 2) "
+          f"= {d['fp_reduction_pct_vs_phase2']:.2f}% reduction")
+    print(f"  Recall: {d['stage1_recall'] * 100:.2f}% (stage 1) -> "
+          f"{m['recall'] * 100:.2f}% (two-stage)")
+    rule()
+
+
 def render(brief=False):
     """Print every results table from the saved artifacts. Called by run_all.py."""
     rows = load_results()
@@ -458,7 +472,7 @@ def render(brief=False):
         m = json.loads(meta.read_text())
         nctx = len([f for f in m["features"] if f.startswith("ctx_")])
         print(f"  Phase 3: {len(m['features'])} features ({nctx} multi-flow context) | "
-              f"70/15/15 stratified split | seed 1")
+              f"60/20/20 stratified split | seed 1")
     if not p2:
         print("  Phase 2: no packet-level results recorded. Run the Phase_2 notebooks to the")
         print("           save_phase2_result cell to add them.")
@@ -468,6 +482,7 @@ def render(brief=False):
         t_phase2(p2)
     t_leaderboard(rows)
     t_per_attack(rows)
+    t_two_stage()
     if not brief:
         t_context()
         t_anomaly_ablation()

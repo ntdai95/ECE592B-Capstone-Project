@@ -1,18 +1,10 @@
-"""Phase 3 dataset prep: merge flow features with the Task 3.1 anomaly scores,
-split, and save the arrays. Each step is a function so it can be rerun on its own.
+"""Phase 3 dataset prep: merge the flow features, the 23 context features and the
+Task 3.1 anomaly scores, split 60/20/20, impute, and save splits.npz.
 
-The 23 connection-window context features are joined in from
-context_features.parquet, so build_context_features.py must have run first.
-
-Median imputation is fitted on the training split only and applied to val and
-test. Fitting the median over the whole dataset before splitting would leak test
-information into preprocessing.
-
-The capture Timestamp is joined in from flow-data/flow_data_ids.csv and the
-capture day is saved alongside the splits, but never used as a feature. It is
-needed by eval_session_holdout.py, which measures how much of the reported
-performance is capture-session memorisation rather than attack detection. Dst
-Port and Protocol are saved for the same diagnostic reason.
+Median imputation is fitted on the training split only; fitting it over the whole
+dataset before splitting would leak test information. Capture Timestamp, Dst Port
+and Protocol are saved alongside the splits for eval_session_holdout.py but are
+never used as features.
 """
 import json
 import numpy as np
@@ -21,7 +13,7 @@ from sklearn.model_selection import train_test_split
 
 from pathlib import Path
 
-from common import FLOW_DATA_DIR, OUT
+from evaluation import FLOW_DATA_DIR, OUT
 SEED = 1
 
 
@@ -43,27 +35,9 @@ def merge_anomaly_scores(df):
 
 
 def merge_context_features(df):
-    """Attach connection-window (multi-flow context) features from
-    build_context_features.py.
-
-    Brute force, DNS spoofing and XSS are multi-flow phenomena. One flow of a
-    password-guessing campaign is indistinguishable from one normal login, which
-    is why per-flow models plateau on those classes. Per-source connection-window
-    statistics are the standard remedy and have been part of IDS feature sets
-    since KDD'99 ("count", "srv_count", "same_srv_rate").
-
-    Three properties make this defensible rather than leakage. The windows are
-    causal: a flow's window contains only flows at or before its own timestamp,
-    so no future information enters any feature. They are label-free: windows are
-    built from Flow ID, IP, port and timestamp only, and no neighbouring flow's
-    label is ever read. And they are deployment-faithful: windows are computed
-    over the full 886,621-flow capture, because a live sensor observes all prior
-    traffic regardless of which flows land in the train/test partition. The split
-    controls which flows the classifier is fitted on, not what the sensor saw.
-
-    Destination port enters only in aggregate form (distinct-port counts,
-    same-service rates). Raw Dst Port remains excluded as a feature.
-    """
+    """Attach the connection-window context features (build_context_features.py),
+    joined by Flow ID. They target the multi-flow classes (brute force, DNS
+    spoofing, XSS) where per-flow models plateau."""
     path = f"{OUT}/context_features.parquet"
     if not Path(path).exists():
         raise FileNotFoundError(
@@ -99,9 +73,9 @@ def make_features_and_target(df):
 
 
 def split(X, y, y_type, seed=SEED):
-    """Stratify on attack type so every class appears in every split (70/15/15)."""
+    """Stratify on attack type so every class appears in every split (60/20/20)."""
     idx = np.arange(len(y))
-    tr, tmp = train_test_split(idx, test_size=0.30, random_state=seed, stratify=y_type)
+    tr, tmp = train_test_split(idx, test_size=0.40, random_state=seed, stratify=y_type)
     va, te = train_test_split(tmp, test_size=0.50, random_state=seed, stratify=y_type[tmp])
     return tr, va, te
 
@@ -148,6 +122,10 @@ def main():
     }
     with open(f"{OUT}/prep_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
+
+    # Train medians, so the two-stage step can impute the alert flows the same way.
+    with open(f"{OUT}/train_medians.json", "w") as f:
+        json.dump({c: float(med.get(c, 0.0)) for c in cols}, f)
     print(json.dumps({k: v for k, v in meta.items() if k != "features"}, indent=2))
 
 

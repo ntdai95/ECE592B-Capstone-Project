@@ -1,24 +1,14 @@
-"""Track B (part 2): Deep SVDD -- one-class deep anomaly detection.
+"""Deep SVDD: one-class deep anomaly detection (Ruff et al., 2018).
 
-Deep SVDD learns an encoder phi that pulls "normal" data into a tight hypersphere
-around a fixed center c; the anomaly score is the squared distance to c. It is the
-headline "smarter than a plain autoencoder" model for the report.
+Learns an encoder that pulls normal traffic into a tight hypersphere around a
+fixed center c; the anomaly score is the squared distance to c. Bias-free linear
+layers and unbounded activations avoid the trivial hypersphere-collapse solution,
+and c is fixed from an initial forward pass rather than learned.
 
-Implementation notes (follow Ruff et al., 2018 to avoid hypersphere collapse):
-  * Linear layers use bias=False and we avoid bounded activations.
-  * The center c is fixed from an initial forward pass (not learned).
-  * Pure PyTorch, CPU-friendly, mini-batched.
-
-WHY AUTOENCODER PRETRAINING (seed stability fix)
-------------------------------------------------
-Without pretraining, the center c is taken from a single forward pass of a
-*randomly initialized* encoder, so a bad init occasionally yields a degenerate c
-and the whole run collapses (we saw one seed drop to AUC ~0.45 while the others
-sat at ~0.75). Ruff et al.'s recommended remedy is to first train the encoder as
-a small autoencoder (reconstruction loss), then initialize Deep SVDD from those
-warmed-up weights and set c from the *pretrained* encoder. The encoder then starts
-from a data-driven representation instead of noise, which removes the collapse.
-Set ``pretrain_epochs=0`` to recover the original random-init behavior.
+The encoder is optionally warm-started as an autoencoder before c is fixed.
+Without it, c comes from a randomly initialised encoder and a bad seed can
+collapse the run (one seed dropped to AUC ~0.45 against ~0.75). Set
+pretrain_epochs=0 to recover the random-init behaviour.
 """
 from __future__ import annotations
 
@@ -111,24 +101,21 @@ class DeepSVDD(BaseDetector):
         loader = DataLoader(TensorDataset(Xt), batch_size=self.batch_size, shuffle=True)
         self.net = self._build(X.shape[1])
 
-        # (1) Optional AE pretraining: warm-starts the encoder so the center c below
-        #     sits in a data-driven representation, not a random one (kills the
-        #     seed-dependent hypersphere collapse). The decoder is thrown away.
+        # AE pretraining warm-starts the encoder; the decoder is discarded.
         if self.pretrain_epochs > 0:
             decoder = self._build_decoder(X.shape[1])
-            ae = torch.nn.Sequential(self.net, decoder)  # reuses self.net as encoder
+            ae = torch.nn.Sequential(self.net, decoder)
             self._pretrain(ae, loader, Xt)
 
-        # (2) Fix the center c from a forward pass of the (pretrained) encoder.
+        # Fix the center c from a forward pass of the pretrained encoder.
         self.net.eval()
         with torch.no_grad():
             reps = self.net(Xt)
             c = reps.mean(dim=0)
-            # nudge near-zero dims away from 0 to avoid trivial solutions
-            c[(abs(c) < 1e-6)] = 1e-6
+            c[(abs(c) < 1e-6)] = 1e-6  # keep near-zero dims off the origin
         self.c = c
 
-        # (3) Deep SVDD objective: pull normal points toward c.
+        # Deep SVDD objective: pull normal points toward c.
         opt = torch.optim.Adam(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.net.train()
         for ep in range(self.epochs):

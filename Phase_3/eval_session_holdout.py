@@ -1,43 +1,31 @@
-"""Capture-session held-out evaluation, the honesty check on the Phase 3 numbers.
+"""Capture-session held-out evaluation: the honesty check on the Phase 3 numbers.
 
-In CIC IoT-DIAD the benign traffic and each attack class were recorded in
-different capture sessions. In this sample benign flows come only from
-2022-10-07/08, while DoS is 2022-08-08/09, DDoS 2022-09-14 and 2022-11-07,
-brute force 2022-10-14/17, DNS spoofing 2022-11-15/16 and XSS 2023-02-14.
-Benign and attack are therefore almost perfectly confounded with capture day
-(<0.3% of attack flows fall inside the benign capture window).
+Benign and each attack class were recorded on different capture days, so a random
+split lets a model score by recognising the capture session rather than the
+attack. This re-splits along capture day and compares against the random split,
+holding everything else fixed. Four conditions isolate which side matters:
 
-A random 70/15/15 split lets a model score well by recognising the capture
-session rather than the attack. This script measures how big that effect is by
-re-splitting along capture day and comparing against the random split, holding
-everything else fixed. Four conditions isolate which side of the split matters:
-
-    C3  benign random,  attacks random   reference, what the leaderboard does
+    C3  benign random,  attacks random   reference (what the leaderboard does)
     C1  benign BY DAY,  attacks random   benign session shift only
     C2  benign random,  attacks BY DAY   attack session shift only
     C0  benign BY DAY,  attacks BY DAY   both, the honest generalisation test
 
-XSS is excluded: it has effectively a single capture day, so it cannot be held
-out.
+XSS is excluded (effectively a single capture day).
 
     python Phase_3/eval_session_holdout.py                  -> session_holdout_results.json
-    python Phase_3/eval_session_holdout.py --features base  -> session_holdout_base_results.json
-
-The base run drops the 23 ctx_* columns and holds everything else fixed: same
-protocol, same day plan, same threshold rule. It is the base half of the context
-ablation reported in README.md, so those figures are regenerated from source
-rather than quoted from an earlier run.
+    python Phase_3/eval_session_holdout.py --features base  -> session_holdout_base_results.json (drops ctx_*)
 """
 import argparse
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from xgboost import XGBClassifier
 from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.model_selection import train_test_split
 
-from common import FLOW_DATA_DIR, FPR_BUDGET, OUT, thr_max_recall
+from evaluation import FLOW_DATA_DIR, FPR_BUDGET, OUT, thr_max_recall
 
 SEED = 1
 
@@ -99,18 +87,10 @@ def build_masks(lab, day, benign_mode, attack_mode, rng):
 
 
 def run_condition(tag, X, lab, tr, te):
-    """Train XGBoost on tr, evaluate on te. Median imputation fitted on tr only.
-
-    The threshold is taken from a held-out slice of tr, never from te. Sizing it
-    on the test benign scores would be an oracle threshold and would report a
-    recall the model could not reach in deployment.
-
-    Because that slice comes from the training capture day, the achieved test FPR
-    is recorded next to the recall. Under a session-disjoint split the benign
-    score distribution moves, so a threshold calibrated on the training day does
-    not hold its budget on the test day, and a recall figure quoted without the
-    FPR it actually cost is not comparable to the leaderboard.
-    """
+    """Train XGBoost on tr, evaluate on te; imputation and threshold both come
+    from tr only (never te, which would be an oracle threshold). The achieved test
+    FPR is recorded next to recall, since under a session-disjoint split a
+    threshold calibrated on the training day need not hold its budget on test."""
     tr_idx = np.where(tr)[0]
     lab_tr = lab[tr]
     fit_i, thr_i = train_test_split(

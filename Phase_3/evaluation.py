@@ -1,23 +1,11 @@
-"""Shared evaluation utilities for Phase 3.
+"""Shared evaluation utilities for Phase 3: metrics, threshold rules, and the
+results.json writer. Every model imports its operating point from here so no
+model scores itself on a different rule.
 
-Every training script imports its metrics and its threshold rule from here, so
-the operating point is defined in one place and no model can score itself on a
-different rule. Results for all models accumulate in a single results.json.
-
-Operating point: the brief fixes a hard budget of FPR <= 1%. Choosing the
-threshold by maximising F1 subject to that budget stops far short of the budget
-under a 3% attack base rate and suppresses the hard classes, so the
-Neyman-Pearson point is used instead: the lowest threshold whose validation FPR
-still respects the budget. Both points are computed and saved.
-
-The count of permitted validation false positives is sized by its
-Clopper-Pearson 99% upper bound rather than budget * n_benign, so the budget
-holds on test rather than only on the sample it was tuned on. Thresholds come
-from the benign validation scores alone, which parameterises FPR directly.
-
-Per-class ROC-AUC against benign is recorded alongside per-class detection
-rate, since detection rate at a fixed FPR conflates ranking quality with base
-rate.
+Operating point: FPR <= 1% is a hard budget, so the threshold maximises recall
+subject to it (Neyman-Pearson) rather than F1. The permitted false-positive count
+is sized by its Clopper-Pearson 99% upper bound rather than budget * n_benign, so
+the budget holds on test, not only on the validation sample it was tuned on.
 """
 import json
 import time
@@ -75,14 +63,9 @@ def metrics(y_true, y_pred, y_score):
 
 
 def safe_fp_allowance(n_benign, budget=FPR_BUDGET, confidence=0.99):
-    """Largest number of validation false positives whose upper confidence bound
-    on the true FPR still sits inside the budget.
-
-    Taking the naive k = budget * n_benign fits the threshold to the validation
-    benign tail and the budget then leaks on test. The Clopper-Pearson upper
-    bound keeps the hard FPR <= 1% requirement intact on unseen data at the cost
-    of a few tenths of a point of recall.
-    """
+    """Largest count of validation false positives whose Clopper-Pearson upper
+    bound on the true FPR still sits inside the budget, so the budget holds on
+    test rather than only on the validation benign tail it was tuned on."""
     from scipy.stats import beta
     k = int(np.floor(budget * n_benign))
     while k > 0:
@@ -151,14 +134,9 @@ def per_class_auc(t_te, te_score):
 
 def detection_vs_budget(t_te, y_te, te_score, y_va, va_score,
                         budgets=(0.001, 0.0025, 0.005, 0.01, 0.02, 0.05)):
-    """How each class's detection rate trades off against the FPR allowance.
-
-    Every threshold comes from the validation scores under the same rule the
-    headline operating point uses. Taking them from the test benign quantiles
-    would be an oracle threshold and would report detection rates at an exactly
-    achieved FPR that a deployed sensor could not reproduce. The achieved test
-    FPR is recorded per row so the gap stays visible.
-    """
+    """Per-class detection rate across a range of FPR budgets. Thresholds come
+    from the validation scores (not the test benign quantiles, which would be an
+    oracle threshold); the achieved test FPR is recorded per row."""
     rows = {}
     for b in budgets:
         thr = thr_max_recall(y_va, va_score, b)

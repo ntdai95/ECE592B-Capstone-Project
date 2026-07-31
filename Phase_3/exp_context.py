@@ -1,38 +1,22 @@
-"""Feature-group ablation: what is each block of features actually contributing?
+"""Feature-group ablation: train the same XGBoost varying only the feature set,
+under two split regimes. A gain that appears under RANDOM but vanishes under
+SESSION is leakage, not detection.
 
-Trains the same XGBoost, same seed, same protocol, varying only the feature set:
-
-  base            the 79 flow features, no connection-window context
-  base+context    base + the 23 ctx_* features, the full set the models use
-  no_anomaly      the full set minus the three Task 3.1 columns
-                  (flow_anomaly_score, flow_anomaly_flag, has_anomaly_score)
-
-and scores each under two evaluation regimes:
-
-  RANDOM   the standard stratified 70/15/15 split used in the leaderboard
-  SESSION  capture-day-disjoint split, the honest generalisation check
-
-A gain that appears under RANDOM but vanishes under SESSION is leakage, not
-detection, and must not be reported as an improvement.
-
-The no_anomaly arm exists because the Task 3.1 scores rank 2nd and 4th by gain
-importance, which reads as Phase 2 carrying the model. But their coverage is
-only 7.4% of flows and is wildly uneven by class (xss 40.9%, brute force 36.7%,
-benign 7.1%, dos 0.8%, ddos 0.5%), which is backwards from what traffic volume
-predicts. That pattern is what a sampling artefact looks like, so the honest
-question is how much recall survives removing them.
+  arms:    base | base+context | no_anomaly (full minus the 3 Task 3.1 columns)
+  regimes: RANDOM (stratified 60/20/20) | SESSION (capture-day-disjoint)
 """
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from sklearn.metrics import roc_auc_score, average_precision_score
 from xgboost import XGBClassifier
 
 import prep
-from common import thr_max_recall, FPR_BUDGET
+from evaluation import thr_max_recall, FPR_BUDGET
 
-from common import OUT
+from evaluation import OUT
 SEED = 1
 ANOMALY_COLS = ["flow_anomaly_score", "flow_anomaly_flag", "has_anomaly_score"]
 
@@ -88,7 +72,7 @@ def at_budget(y_va, va_score, y_te, t_te, score, budget=FPR_BUDGET):
 def random_split(df):
     from sklearn.model_selection import train_test_split
     idx = np.arange(len(df))
-    tr, tmp = train_test_split(idx, test_size=0.30, random_state=SEED,
+    tr, tmp = train_test_split(idx, test_size=0.40, random_state=SEED,
                                stratify=df["label"].to_numpy())
     va, te = train_test_split(tmp, test_size=0.50, random_state=SEED,
                               stratify=df["label"].to_numpy()[tmp])
