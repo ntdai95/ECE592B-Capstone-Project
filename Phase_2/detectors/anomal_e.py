@@ -1,33 +1,21 @@
-"""Track A: Anomal-E -- self-supervised, edge-feature GNN for NIDS (transductive).
+"""Anomal-E: self-supervised, edge-feature GNN for NIDS, transductive.
 
 Pipeline (Caville et al., 2022, arXiv:2207.06819):
-  1. Build ONE host graph over all packets; each packet is an edge carrying its
-     (scaled) feature vector. Hosts are nodes.
-  2. Encode with E-GraphSAGE (Lo et al., 2021) -> node embeddings, then form an
-     edge embedding = concat(h_src, h_dst) for every packet.
-  3. Train the encoder *self-supervised* with Deep Graph Infomax (DGI): a
-     discriminator separates real edge embeddings from embeddings of a graph whose
-     edge features were randomly permuted. NO labels are used.
-  4. Fit a classical detector (Isolation Forest) on the TRAIN edge embeddings only,
-     then score val/test edges.
+  1. One host graph over all packets; each packet is an edge carrying its scaled
+     feature vector, hosts are nodes.
+  2. E-GraphSAGE (Lo et al., 2021) node embeddings, then an edge embedding
+     concat(h_src, h_dst) per packet.
+  3. Train the encoder self-supervised with Deep Graph Infomax: a discriminator
+     separates real edge embeddings from ones built on a feature-permuted graph.
+     No labels used.
+  4. Fit Isolation Forest on the TRAIN edge embeddings only, score val/test.
 
-WHY TRANSDUCTIVE (review fix C1)
---------------------------------
-The whole point of the GNN is the fan-in/out topology of stealthy attacks, which
-the EDA measured on the *full* 195,940-packet graph. If we instead split packets
-at random and give each split its own thinned graph, a host's true degree/fan-in
-is fragmented (~5x smaller) and the signal disappears. So we compute node
-embeddings on the full graph (this is unsupervised representation learning -- it
-uses edge *structure/features*, never labels, hence no label leakage), and keep
-the supervised-style discipline only where labels could leak: the downstream
-detector is fit on train edges, and the threshold is chosen on validation.
-
-CPU/RAM
--------
-Full-batch message passing memory scales with #edges. We cap the *message-passing*
-graph used to compute node embeddings (``max_mp_edges``); edge embeddings are then
-formed for ALL packets from those node embeddings (cheap gather+concat), so every
-packet can still be scored regardless of the cap.
+Transductive by design: node embeddings use edge structure/features (never
+labels), and stealthy-attack fan-in/out is only visible on the full graph -- a
+random per-split graph fragments each host's degree and the signal disappears.
+Label discipline is kept where labels could leak: the downstream detector fits on
+train edges, the threshold is chosen on validation. max_mp_edges caps the
+message-passing graph for memory; edge embeddings are still formed for all packets.
 """
 from __future__ import annotations
 

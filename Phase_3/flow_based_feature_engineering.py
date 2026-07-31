@@ -173,15 +173,6 @@ def log_transform_skewed(X):
 
 ## Normalization/Scaling and Dimension Reduction
 def normalization():
-    """log1p (applied upstream) + z-scoring.
-
-    StandardScaler instead of RobustScaler: many flow-level columns (flag
-    counts, bulk-rate features) are zero-inflated, so their IQR is 0 and
-    RobustScaler leaves them unscaled at raw magnitude. After log1p the tails
-    are tame enough for z-scoring, which gives every feature comparable
-    weight in k-means distances and PCA components -- same choice made for
-    the packet-level heavy-tailed columns in data_preprocessing_packet.py.
-    """
     pipeline = Pipeline([('scaler', StandardScaler())])
     return pipeline
 
@@ -193,46 +184,52 @@ def pca_contribution(pca, X):
     weights = pd.DataFrame(pca.components_.T, index=X.columns, columns=[f"PC{i+1}" for i in range(pca.components_.shape[0])])
     weights.to_csv(OUTPUT_DIR / "pca_feature_contribution.csv")
 
-def main():
-    # Task 3.2: for each packet flagged as anomalous in Phase 2, locate its corresponding flow-level data.
-    aggregated_flows_df = build_aggregated_flows()
-    phase2_alert_ids = pd.read_csv(PHASE2_ALERTS_FILE, usecols=["id"])["id"]
-    alerted_packet_identifiers_df = load_packet_identifiers(packet_ids=phase2_alert_ids)
-    phase2_alert_flows_df = locate_corresponding_flows(alerted_packet_identifiers_df, aggregated_flows_df)
-    phase2_alert_flows_df.to_csv(OUTPUT_DIR / "phase2_alert_corresponding_flows.csv", index=False)
-    print(f"Saved {len(phase2_alert_flows_df):,} flow-level rows corresponding to Phase 2 alerts")
+def normalize_alert_flows(alert_flows, feature_columns, fill_means, scaler):
+    meta_cols = [c for c in ["packet_id", "Flow ID", "packet_label"] if c in alert_flows.columns]
+    A = alert_flows[feature_columns].replace([np.inf, -np.inf], np.nan).fillna(fill_means)
+    A = log_transform_skewed(A)
+    scaled = pd.DataFrame(scaler.transform(A), columns=feature_columns)
+    for c in meta_cols:
+        scaled[c] = alert_flows[c].values
+    scaled.to_csv(OUTPUT_DIR / "phase2_alert_corresponding_flows.csv", index=False)
+    print(f"Saved {len(scaled):,} normalized Phase 2 alert flows")
 
-    # Task 3.2: generate a second random dataset directly from the flow-level data, using the same
-    # proportions/sampling function as Task 1.1. Reuses the aggregated table built above.
+
+def main():
+    aggregated_flows_df = build_aggregated_flows()
+
+    # Task 3.2: a second random dataset drawn directly from the flow-level data.
     flow_df = subsample_by_label(aggregated_flows_df)
     flow_df = impute_missing_feature_values(flow_df)
-    feature_columns = []
-    for column_name in flow_df.columns:
-        if column_name not in ["Flow ID", "label"]:
-            feature_columns.append(column_name)
-
+    feature_columns = [c for c in flow_df.columns if c not in ["Flow ID", "label"]]
+    fill_means = flow_df[feature_columns].mean()        # raw-space means, to fill alert gaps
     flow_df[feature_columns] = log_transform_skewed(flow_df[feature_columns])
     flow_df = remove_outliers_per_label(flow_df)
     flow_ids = flow_df["Flow ID"].values
     X = flow_df[feature_columns]
     y = flow_df["label"]
 
-    ## Normalized Original Dataset (no dimension reduction)
-    full_ds = pd.DataFrame(normalization().fit_transform(X), columns=X.columns)
+    # Fit the scaler once; reuse it for both the dataset and the Phase 2 alerts.
+    scaler = normalization().fit(X)
+    full_ds = pd.DataFrame(scaler.transform(X), columns=feature_columns)
     full_ds["Flow ID"] = flow_ids
     full_ds["label"] = y.values
     full_ds.to_csv(OUTPUT_DIR / "normalized_original_data.csv", index=False)
 
-    # PCA Reduced Data
+    # PCA-reduced view (Task 3.2 dimensionality reduction)
     pca_pipeline = PCA_reduction()
     pca_arr = pca_pipeline.fit_transform(X)
     pca_ds = pd.DataFrame(pca_arr, columns=[f"PC{i+1}" for i in range(pca_arr.shape[1])])
     pca_ds["Flow ID"] = flow_ids
     pca_ds["label"] = y.values
     pca_ds.to_csv(OUTPUT_DIR / "pca_data.csv", index=False)
+    pca_contribution(pca_pipeline.named_steps["pca"], X)
 
-    pca = pca_pipeline.named_steps["pca"]
-    pca_contribution(pca, X)
+    # Task 3.2: locate the flows behind the Phase 2 alerts, normalized the same way.
+    phase2_alert_ids = pd.read_csv(PHASE2_ALERTS_FILE, usecols=["id"])["id"]
+    alerted = load_packet_identifiers(packet_ids=phase2_alert_ids)
+    alert_flows = locate_corresponding_flows(alerted, aggregated_flows_df)
+    normalize_alert_flows(alert_flows, feature_columns, fill_means, scaler)
 
 
 if __name__ == "__main__":

@@ -9,11 +9,12 @@
                   feature_importance.csv, consumed by show_results.py.
 """
 import json
-import numpy as np
-import pandas as pd
 from pathlib import Path
 
-from common import FLOW_DATA_DIR, OUT
+import numpy as np
+import pandas as pd
+
+from evaluation import FLOW_DATA_DIR, OUT
 
 
 def check_causality():
