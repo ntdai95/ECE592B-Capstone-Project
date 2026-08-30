@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import replace
 
 import numpy as np
@@ -11,7 +9,7 @@ from .data import Dataset
 
 class LogStandardScaler(BaseEstimator, TransformerMixin):
     def __init__(self):
-        self.log_cols_: np.ndarray | None = None
+        self.log_cols_ = None
         self.scaler_ = StandardScaler()
 
     def fit(self, X, y=None):
@@ -37,7 +35,7 @@ class IdentityScaler(BaseEstimator, TransformerMixin):
         return np.asarray(X, dtype=np.float32)
 
 
-def make_scaler(name: str):
+def make_scaler(name):
     if name == "quantile":
         return QuantileTransformer(output_distribution="normal", n_quantiles=1000,
                                    subsample=1_000_000, random_state=0)
@@ -52,17 +50,17 @@ def make_scaler(name: str):
     raise ValueError(f"Unknown scaler {name!r}")
 
 
-def find_zero_variance(ds: Dataset, tol: float = 1e-12) -> list[str]:
+def find_zero_variance(ds, tol=1e-12):
     stds = ds.X.std(axis=0)
     return [n for n, s in zip(ds.feature_names, stds) if s < tol]
 
 
-def drop_features(ds: Dataset, drop: list[str]) -> Dataset:
+def drop_features(ds, drop):
     if not drop:
         return ds
     keep = [i for i, n in enumerate(ds.feature_names) if n not in set(drop)]
     return replace(ds, X=ds.X[:, keep], feature_names=[ds.feature_names[i] for i in keep])
 
 
-def apply_scaler(ds: Dataset, scaler) -> Dataset:
+def apply_scaler(ds, scaler):
     return replace(ds, X=scaler.transform(ds.X).astype(np.float32))

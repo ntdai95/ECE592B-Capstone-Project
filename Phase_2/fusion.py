@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import numpy as np
 
 
-def normalize_ref(scores: np.ndarray, ref: np.ndarray) -> np.ndarray:
+def normalize_ref(scores, ref):
     ref = np.asarray(ref, dtype=float)
     ref = ref[~np.isnan(ref)]
     if ref.size == 0:
@@ -13,7 +11,7 @@ def normalize_ref(scores: np.ndarray, ref: np.ndarray) -> np.ndarray:
     return np.clip(q, 0.0, 1.0)
 
 
-def fuse(score_lists: list[np.ndarray], ref_lists: list[np.ndarray], combine: str = "max") -> np.ndarray:
+def fuse(score_lists, ref_lists, combine="max"):
     norm = [normalize_ref(s, r) for s, r in zip(score_lists, ref_lists)]
     stacked = np.vstack(norm)
     if combine == "max":

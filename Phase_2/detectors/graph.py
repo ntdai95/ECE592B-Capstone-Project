@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import numpy as np
@@ -16,12 +14,12 @@ class GraphArrays:
     node_in_dim: int
 
 
-def load_ids_table() -> pd.DataFrame:
+def load_ids_table():
     cols = ["id", "src_ip", "dst_ip", "src_mac", "dst_mac", "src_port", "dst_port"]
     return pd.read_csv(C.IDS_CSV, usecols=cols)
 
 
-def _host_col(sub: pd.DataFrame, name: str, prefix: str) -> np.ndarray:
+def _host_col(sub, name, prefix):
     vals = sub[name].to_numpy(dtype=object)
     miss = pd.isna(vals)
     if miss.any():
@@ -31,12 +29,12 @@ def _host_col(sub: pd.DataFrame, name: str, prefix: str) -> np.ndarray:
     return vals.astype(str)
 
 
-def _port_col(sub: pd.DataFrame, name: str) -> np.ndarray:
+def _port_col(sub, name):
     s = pd.to_numeric(sub[name], errors="coerce").astype("Int64")
     return s.astype(str).str.replace("<NA>", "NA", regex=False).to_numpy(dtype=object)
 
 
-def _endpoints(sub: pd.DataFrame, node_type: str) -> tuple[np.ndarray, np.ndarray]:
+def _endpoints(sub, node_type):
     if node_type == "ip":
         return _host_col(sub, "src_ip", "s"), _host_col(sub, "dst_ip", "d")
     if node_type == "mac":
@@ -50,13 +48,7 @@ def _endpoints(sub: pd.DataFrame, node_type: str) -> tuple[np.ndarray, np.ndarra
     raise ValueError(f"Unknown node_type {node_type!r}")
 
 
-def build_graph(
-    X: np.ndarray,
-    ids: np.ndarray,
-    ids_df: pd.DataFrame,
-    node_type: str = "ip",
-    node_in_dim: int = 16,
-) -> GraphArrays:
+def build_graph(X, ids, ids_df, node_type="ip", node_in_dim=16):
     sub = ids_df.set_index("id").reindex(ids)
     src, dst = _endpoints(sub, node_type)
 

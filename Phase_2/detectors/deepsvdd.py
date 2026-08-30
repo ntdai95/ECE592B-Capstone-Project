@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 
 from . import BaseDetector
@@ -10,14 +8,14 @@ class DeepSVDD(BaseDetector):
 
     def __init__(
         self,
-        hidden_dims: tuple[int, ...] = (128, 64, 32),
-        epochs: int = 40,
-        batch_size: int = 1024,
-        lr: float = 1e-3,
-        weight_decay: float = 1e-6,
-        pretrain_epochs: int = 50,
-        seed: int = 0,
-        verbose: bool = False,
+        hidden_dims=(128, 64, 32),
+        epochs=40,
+        batch_size=1024,
+        lr=1e-3,
+        weight_decay=1e-6,
+        pretrain_epochs=50,
+        seed=0,
+        verbose=False,
     ):
         self.hidden_dims = hidden_dims
         self.epochs = epochs
@@ -30,7 +28,7 @@ class DeepSVDD(BaseDetector):
         self.net = None
         self.c = None
 
-    def _build(self, in_dim: int):
+    def _build(self, in_dim):
         import torch.nn as nn
 
         layers = []
@@ -41,7 +39,7 @@ class DeepSVDD(BaseDetector):
         layers += [nn.Linear(prev, self.hidden_dims[-1], bias=False)]
         return nn.Sequential(*layers)
 
-    def _build_decoder(self, in_dim: int):
+    def _build_decoder(self, in_dim):
         import torch.nn as nn
 
         rev = list(reversed(self.hidden_dims))
@@ -71,7 +69,7 @@ class DeepSVDD(BaseDetector):
                 print(f"[DeepSVDD-AE] epoch {ep + 1}/{self.pretrain_epochs} "
                       f"recon={tot / len(Xt):.5f}")
 
-    def fit(self, X: np.ndarray) -> "DeepSVDD":
+    def fit(self, X):
         import torch
         from torch.utils.data import DataLoader, TensorDataset
 
@@ -109,7 +107,7 @@ class DeepSVDD(BaseDetector):
                 print(f"[DeepSVDD] epoch {ep + 1}/{self.epochs} loss={tot / len(Xt):.5f}")
         return self
 
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X):
         import torch
 
         self.net.eval()

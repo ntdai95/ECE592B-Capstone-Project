@@ -1,17 +1,13 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-
-import numpy as np
 
 
 class BaseDetector(ABC):
-    name: str = "base"
+    name = "base"
 
     @abstractmethod
-    def fit(self, X: np.ndarray) -> "BaseDetector":
+    def fit(self, X):
         ...
 
     @abstractmethod
-    def score(self, X: np.ndarray) -> np.ndarray:
+    def score(self, X):
         ...

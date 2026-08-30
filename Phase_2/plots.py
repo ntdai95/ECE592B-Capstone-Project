@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
 
@@ -19,7 +17,7 @@ from sklearn.metrics import (
 from . import config as C
 
 
-def _save(fig, name: str) -> Path:
+def _save(fig, name):
     C.ensure_dirs()
     path = C.FIG_DIR / name
     fig.savefig(path, dpi=150, bbox_inches="tight")
@@ -27,7 +25,7 @@ def _save(fig, name: str) -> Path:
     return path
 
 
-def plot_roc(scores: np.ndarray, y_bin: np.ndarray, title: str, name: str) -> Path:
+def plot_roc(scores, y_bin, title, name):
     fig, ax = plt.subplots(figsize=(5, 5))
     RocCurveDisplay.from_predictions(y_bin, scores, ax=ax, name=title)
     ax.plot([0, 1], [0, 1], "k--", lw=0.8, alpha=0.6)
@@ -35,14 +33,14 @@ def plot_roc(scores: np.ndarray, y_bin: np.ndarray, title: str, name: str) -> Pa
     return _save(fig, name)
 
 
-def plot_pr(scores: np.ndarray, y_bin: np.ndarray, title: str, name: str) -> Path:
+def plot_pr(scores, y_bin, title, name):
     fig, ax = plt.subplots(figsize=(5, 5))
     PrecisionRecallDisplay.from_predictions(y_bin, scores, ax=ax, name=title)
     ax.set_title(f"Precision–Recall — {title}")
     return _save(fig, name)
 
 
-def plot_confusion(cm: np.ndarray, title: str, name: str) -> Path:
+def plot_confusion(cm, title, name):
     fig, ax = plt.subplots(figsize=(4.5, 4))
     ConfusionMatrixDisplay(cm, display_labels=["benign", "attack"]).plot(
         ax=ax, cmap="Blues", colorbar=False
@@ -51,7 +49,7 @@ def plot_confusion(cm: np.ndarray, title: str, name: str) -> Path:
     return _save(fig, name)
 
 
-def plot_per_attack_dr(per_attack_dr: dict[str, float], title: str, name: str) -> Path:
+def plot_per_attack_dr(per_attack_dr, title, name):
     fig, ax = plt.subplots(figsize=(6, 4))
     atks = list(per_attack_dr.keys())
     vals = [per_attack_dr[a] for a in atks]
@@ -65,14 +63,7 @@ def plot_per_attack_dr(per_attack_dr: dict[str, float], title: str, name: str) -
     return _save(fig, name)
 
 
-def plot_embedding(
-    emb: np.ndarray,
-    y_multi: np.ndarray,
-    title: str,
-    name: str,
-    method: str = "umap",
-    max_points: int = 8000,
-) -> Path:
+def plot_embedding(emb, y_multi, title, name, method="umap", max_points=8000):
     rng = np.random.default_rng(0)
     benign_idx = np.where(y_multi == C.BENIGN_LABEL)[0]
     attack_idx = np.where(y_multi != C.BENIGN_LABEL)[0]

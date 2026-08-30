@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 import pandas as pd
 
@@ -13,7 +11,7 @@ def _make_modules():
     from torch_geometric.nn import MessagePassing
 
     class EGraphSAGELayer(MessagePassing):
-        def __init__(self, node_in: int, edge_dim: int, out: int):
+        def __init__(self, node_in, edge_dim, out):
             super().__init__(aggr="mean")
             self.lin_msg = nn.Linear(node_in + edge_dim, out)
             self.lin_upd = nn.Linear(node_in + out, out)
@@ -27,7 +25,7 @@ def _make_modules():
             return F.relu(self.lin_msg(torch.cat([x_j, edge_attr], dim=1)))
 
     class EGraphSAGE(nn.Module):
-        def __init__(self, node_in: int, edge_dim: int, hidden: int, n_layers: int = 2):
+        def __init__(self, node_in, edge_dim, hidden, n_layers=2):
             super().__init__()
             self.layers = nn.ModuleList()
             dims = [node_in] + [hidden] * n_layers
@@ -42,7 +40,7 @@ def _make_modules():
             return h
 
     class Discriminator(nn.Module):
-        def __init__(self, dim: int):
+        def __init__(self, dim):
             super().__init__()
             self.bilinear = nn.Bilinear(dim, dim, 1)
 
@@ -57,17 +55,17 @@ class AnomalE:
 
     def __init__(
         self,
-        node_type: str = "ip",
-        hidden: int = 64,
-        n_layers: int = 2,
-        node_in_dim: int = 16,
-        epochs: int = 60,
-        lr: float = 1e-3,
-        max_mp_edges: int = 90_000,
-        loss_edges: int = 20_000,
-        contamination: float = 0.03,
-        seed: int = 0,
-        verbose: bool = False,
+        node_type="ip",
+        hidden=64,
+        n_layers=2,
+        node_in_dim=16,
+        epochs=60,
+        lr=1e-3,
+        max_mp_edges=90_000,
+        loss_edges=20_000,
+        contamination=0.03,
+        seed=0,
+        verbose=False,
     ):
         self.node_type = node_type
         self.hidden = hidden
@@ -80,12 +78,12 @@ class AnomalE:
         self.contamination = contamination
         self.seed = seed
         self.verbose = verbose
-        self._ids_df: pd.DataFrame | None = None
+        self._ids_df = None
         self.encoder = None
         self.downstream = None
-        self.last_test_emb: np.ndarray | None = None
+        self.last_test_emb = None
 
-    def _ids_table(self) -> pd.DataFrame:
+    def _ids_table(self):
         if self._ids_df is None:
             self._ids_df = load_ids_table()
         return self._ids_df

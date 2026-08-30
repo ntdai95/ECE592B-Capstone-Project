@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import numpy as np
@@ -14,13 +12,13 @@ class Dataset:
     y_bin: np.ndarray
     y_multi: np.ndarray
     ids: np.ndarray
-    feature_names: list[str]
+    feature_names: list
 
-    def __len__(self) -> int:
+    def __len__(self):
         return self.X.shape[0]
 
 
-def load_feature_table(feature_set: str = "normalized", nrows: int | None = None) -> pd.DataFrame:
+def load_feature_table(feature_set="normalized", nrows=None):
     if feature_set not in C.FEATURE_SETS:
         raise ValueError(f"Unknown feature_set {feature_set!r}; choose from {list(C.FEATURE_SETS)}")
     path = C.FEATURE_SETS[feature_set]
@@ -28,7 +26,7 @@ def load_feature_table(feature_set: str = "normalized", nrows: int | None = None
     return df
 
 
-def to_dataset(df: pd.DataFrame) -> Dataset:
+def to_dataset(df):
     feature_names = [c for c in df.columns if c not in (C.ID_COL, C.LABEL_COL)]
     X = df[feature_names].to_numpy(dtype=np.float32, copy=True)
 
@@ -42,11 +40,7 @@ def to_dataset(df: pd.DataFrame) -> Dataset:
     return Dataset(X=X, y_bin=y_bin, y_multi=y_multi, ids=ids, feature_names=feature_names)
 
 
-def stratified_split(
-    ds: Dataset,
-    fracs: tuple[float, float, float] = C.SPLIT_FRACS,
-    seed: int = 0,
-) -> tuple[Dataset, Dataset, Dataset]:
+def stratified_split(ds, fracs=C.SPLIT_FRACS, seed=0):
     assert abs(sum(fracs) - 1.0) < 1e-6, "split fractions must sum to 1"
     rng = np.random.default_rng(seed)
     n = len(ds)
@@ -62,7 +56,7 @@ def stratified_split(
         val_idx.append(cls_idx[n_tr:n_tr + n_va])
         test_idx.append(cls_idx[n_tr + n_va:])
 
-    def gather(idx_parts: list[np.ndarray]) -> Dataset:
+    def gather(idx_parts):
         idx = np.concatenate(idx_parts)
         rng.shuffle(idx)
         return Dataset(
@@ -76,7 +70,7 @@ def stratified_split(
     return gather(train_idx), gather(val_idx), gather(test_idx)
 
 
-def subsample(ds: Dataset, n: int, seed: int = 0) -> Dataset:
+def subsample(ds, n, seed=0):
     if n >= len(ds):
         return ds
     rng = np.random.default_rng(seed)
@@ -94,11 +88,7 @@ def subsample(ds: Dataset, n: int, seed: int = 0) -> Dataset:
     )
 
 
-def load_splits(
-    feature_set: str = "normalized",
-    seed: int = 0,
-    nrows: int | None = None,
-) -> tuple[Dataset, Dataset, Dataset]:
+def load_splits(feature_set="normalized", seed=0, nrows=None):
     df = load_feature_table(feature_set, nrows=nrows)
     ds = to_dataset(df)
     return stratified_split(ds, seed=seed)

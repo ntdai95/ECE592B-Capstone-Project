@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 
 import numpy as np
@@ -12,7 +10,7 @@ from . import config as C
 from .data import load_feature_table, to_dataset
 
 
-def _guess_scaler(X: np.ndarray) -> str:
+def _guess_scaler(X):
     gmin, gmax, gmean = X.min(), X.max(), X.mean()
     if gmin >= -1e-6 and gmax <= 1 + 1e-6:
         return "min-max to [0, 1]"
@@ -23,7 +21,7 @@ def _guess_scaler(X: np.ndarray) -> str:
     return "unknown / custom"
 
 
-def data_quality_report(feature_set: str) -> None:
+def data_quality_report(feature_set):
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
     X = ds.X
@@ -49,7 +47,7 @@ def data_quality_report(feature_set: str) -> None:
     print(f"duplicate feature rows (ignoring id): {dups} ({dups / len(df) * 100:.2f}%)")
 
 
-def detectability_report(feature_set: str, benign_sample: int = 20000, seed: int = 0) -> None:
+def detectability_report(feature_set, benign_sample=20000, seed=0):
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
     rng = np.random.default_rng(seed)
@@ -82,7 +80,7 @@ def detectability_report(feature_set: str, benign_sample: int = 20000, seed: int
               f"| top: {best}")
 
 
-def dimensionality_report(feature_set: str, sample: int = 40000, seed: int = 0) -> None:
+def dimensionality_report(feature_set, sample=40000, seed=0):
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
     rng = np.random.default_rng(seed)
@@ -99,7 +97,7 @@ def dimensionality_report(feature_set: str, sample: int = 40000, seed: int = 0) 
           f"(used for the EDA scatter plot)")
 
 
-def topology_report() -> None:
+def topology_report():
     ids = pd.read_csv(C.IDS_CSV)
     labels = load_feature_table("normalized")[[C.ID_COL, C.LABEL_COL]]
     g = ids.merge(labels, on=C.ID_COL, how="inner")
@@ -127,7 +125,7 @@ def topology_report() -> None:
           "to one target (DoS); high top-Dst% => traffic concentrated on a host.")
 
 
-def main() -> None:
+def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true", help="smaller samples for speed")
     args = ap.parse_args()
