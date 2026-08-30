@@ -7,7 +7,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 
-# File names
 FILE_GROUPS = {
     'benign':       ['BenignTraffic.pcap_Flow.csv', 'BenignTraffic1.pcap_Flow.csv',
                      'BenignTraffic2.pcap_Flow.csv', 'BenignTraffic3.pcap_Flow.csv'],
@@ -31,10 +30,8 @@ PACKET_IDENTIFIERS_FILE = PACKET_DATA_DIR / "packet_data_ids.csv"
 PACKET_PROTOCOL_FLAGS_FILE = PACKET_DATA_DIR / "normalized_original_data.csv"
 PHASE2_ALERTS_FILE = PACKET_DATA_DIR / "phase2_autoencoder_alert_rows_for_phase3.csv"
 
-# Verified to see only 6 and 17 for the Protocol column in .csv downloaded files.
 PROTOCOL_NUMBERS = {"tcp": 6, "udp": 17}
 
-# Load Flow-level Data
 def load_all_datasets(path, filenames):
     flow_data = []
     for label, files in filenames.items():
@@ -49,7 +46,6 @@ def load_all_datasets(path, filenames):
 
     return pd.concat(flow_data, ignore_index=True)
 
-# Aggregate Flows into one unified record per Flow ID
 def aggregate_flows(flow_df):
     identifier_columns = ["Src IP", "Src Port", "Dst IP", "Dst Port", "Protocol", "Timestamp"]
     identifier_df = flow_df[["Flow ID"] + identifier_columns].drop_duplicates("Flow ID")
@@ -71,7 +67,6 @@ def aggregate_flows(flow_df):
 
     return flow_df.groupby(["Flow ID", "label"], as_index=False).agg(columns_aggregation_methods), identifier_df
 
-# Locate the flow-level data corresponding to a packet-level selection, trying both endpoints.
 def load_packet_identifiers(packet_ids=None):
     identifiers_df = pd.read_csv(PACKET_IDENTIFIERS_FILE)
     protocol_df = pd.read_csv(PACKET_PROTOCOL_FLAGS_FILE, usecols=["id", "l4_tcp", "l4_udp", "label"])
@@ -88,10 +83,10 @@ def load_packet_identifiers(packet_ids=None):
 
 def build_flow_ids(packet_identifiers_df):
     protocol = packet_identifiers_df["protocol"].astype(int).astype(str)
-    src_ip = packet_identifiers_df["src_ip"].astype(str)
-    dst_ip = packet_identifiers_df["dst_ip"].astype(str)
-    src_port = packet_identifiers_df["src_port"].astype(str)
-    dst_port = packet_identifiers_df["dst_port"].astype(str)
+    src_ip = packet_identifiers_df["src_ip"].fillna('nan').astype(str)
+    dst_ip = packet_identifiers_df["dst_ip"].fillna('nan').astype(str)
+    src_port = packet_identifiers_df["src_port"].fillna('nan').astype(str)
+    dst_port = packet_identifiers_df["dst_port"].fillna('nan').astype(str)
     packet_identifiers_df = packet_identifiers_df.copy()
     packet_identifiers_df["flow_id_forward"] = src_ip + "-" + dst_ip + "-" + src_port + "-" + dst_port + "-" + protocol
     packet_identifiers_df["flow_id_reverse"] = dst_ip + "-" + src_ip + "-" + dst_port + "-" + src_port + "-" + protocol
@@ -116,7 +111,6 @@ def locate_corresponding_flows(packet_identifiers_df, aggregated_flows_df):
     print(f"[flow-correspondence] Matched {len(matched_df):,}/{len(packet_identifiers_df):,} packets to a flow-level record")
     return matched_df
 
-# Task 3.2: Create Function for Random Sampling (reused the same function as Task 1.1)
 def random_sampling(df, n_samples, random_state=None):
     if len(df) < n_samples:
         return df.copy()
@@ -136,12 +130,10 @@ def subsample_by_label(flow_df, n_benign=200_000, n_attack=1200, random_state=RA
     print(f"Number of Samples from each Label:\n{sampled_df['label'].value_counts()}")
     return sampled_df
 
-# Handle missing feature values by imputing the mean for continuous, and the mode for categorical (no categorical column)
 def impute_missing_feature_values(flow_df):
     for column_name in flow_df.columns:
         if column_name not in ["Flow ID", "label"]:
             flow_df[column_name] = flow_df[column_name].replace([np.inf, -np.inf], np.nan)
-            # Duplicated Flow Ids have been removed in the aggregate_flows() function above
             flow_df[column_name] = flow_df.groupby("label")[column_name].transform(lambda x: x.fillna(x.mean()))
 
     return flow_df
@@ -171,7 +163,6 @@ def log_transform_skewed(X):
     print(f"[feature-eng] log1p applied to {len(X.columns)} heavy-tailed columns")
     return X
 
-## Normalization/Scaling and Dimension Reduction
 def normalization():
     pipeline = Pipeline([('scaler', StandardScaler())])
     return pipeline
@@ -198,25 +189,22 @@ def normalize_alert_flows(alert_flows, feature_columns, fill_means, scaler):
 def main():
     aggregated_flows_df = build_aggregated_flows()
 
-    # Task 3.2: a second random dataset drawn directly from the flow-level data.
     flow_df = subsample_by_label(aggregated_flows_df)
     flow_df = impute_missing_feature_values(flow_df)
     feature_columns = [c for c in flow_df.columns if c not in ["Flow ID", "label"]]
-    fill_means = flow_df[feature_columns].mean()        # raw-space means, to fill alert gaps
+    fill_means = flow_df[feature_columns].mean()
     flow_df[feature_columns] = log_transform_skewed(flow_df[feature_columns])
     flow_df = remove_outliers_per_label(flow_df)
     flow_ids = flow_df["Flow ID"].values
     X = flow_df[feature_columns]
     y = flow_df["label"]
 
-    # Fit the scaler once; reuse it for both the dataset and the Phase 2 alerts.
     scaler = normalization().fit(X)
     full_ds = pd.DataFrame(scaler.transform(X), columns=feature_columns)
     full_ds["Flow ID"] = flow_ids
     full_ds["label"] = y.values
     full_ds.to_csv(OUTPUT_DIR / "normalized_original_data.csv", index=False)
 
-    # PCA-reduced view (Task 3.2 dimensionality reduction)
     pca_pipeline = PCA_reduction()
     pca_arr = pca_pipeline.fit_transform(X)
     pca_ds = pd.DataFrame(pca_arr, columns=[f"PC{i+1}" for i in range(pca_arr.shape[1])])
@@ -225,7 +213,6 @@ def main():
     pca_ds.to_csv(OUTPUT_DIR / "pca_data.csv", index=False)
     pca_contribution(pca_pipeline.named_steps["pca"], X)
 
-    # Task 3.2: locate the flows behind the Phase 2 alerts, normalized the same way.
     phase2_alert_ids = pd.read_csv(PHASE2_ALERTS_FILE, usecols=["id"])["id"]
     alerted = load_packet_identifiers(packet_ids=phase2_alert_ids)
     alert_flows = locate_corresponding_flows(alerted, aggregated_flows_df)

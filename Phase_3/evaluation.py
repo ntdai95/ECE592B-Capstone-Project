@@ -1,12 +1,3 @@
-"""Shared evaluation utilities for Phase 3: metrics, threshold rules, and the
-results.json writer. Every model imports its operating point from here so no
-model scores itself on a different rule.
-
-Operating point: FPR <= 1% is a hard budget, so the threshold maximises recall
-subject to it (Neyman-Pearson) rather than F1. The permitted false-positive count
-is sized by its Clopper-Pearson 99% upper bound rather than budget * n_benign, so
-the budget holds on test, not only on the validation sample it was tuned on.
-"""
 import json
 import time
 import numpy as np
@@ -63,9 +54,6 @@ def metrics(y_true, y_pred, y_score):
 
 
 def safe_fp_allowance(n_benign, budget=FPR_BUDGET, confidence=0.99):
-    """Largest count of validation false positives whose Clopper-Pearson upper
-    bound on the true FPR still sits inside the budget, so the budget holds on
-    test rather than only on the validation benign tail it was tuned on."""
     from scipy.stats import beta
     k = int(np.floor(budget * n_benign))
     while k > 0:
@@ -77,8 +65,6 @@ def safe_fp_allowance(n_benign, budget=FPR_BUDGET, confidence=0.99):
 
 
 def thr_max_recall(y_val, val_score, budget=FPR_BUDGET):
-    """Neyman-Pearson operating point: lowest threshold that keeps FPR within
-    budget, with the allowance sized by its upper confidence bound."""
     ben = np.sort(val_score[y_val == 0])[::-1]
     k = safe_fp_allowance(len(ben), budget)
     if k < 1:
@@ -87,8 +73,6 @@ def thr_max_recall(y_val, val_score, budget=FPR_BUDGET):
 
 
 def thr_max_f1(y_val, val_score, budget=FPR_BUDGET):
-    """Alternative rule kept for the trade-off discussion: maximise F1 subject
-    to FPR <= budget."""
     ben = np.sort(val_score[y_val == 0])[::-1]
     best, best_f1 = float(ben[0]) + 1.0, -1.0
     for k in range(1, safe_fp_allowance(len(ben), budget) + 1):
@@ -118,8 +102,6 @@ def per_attack(t_te, y_pred):
 
 
 def per_class_auc(t_te, te_score):
-    """ROC-AUC of each attack class against benign: ranking quality, free of
-    base rate."""
     out = {}
     ben = t_te == "benign"
     for cls in np.unique(t_te):
@@ -134,9 +116,6 @@ def per_class_auc(t_te, te_score):
 
 def detection_vs_budget(t_te, y_te, te_score, y_va, va_score,
                         budgets=(0.001, 0.0025, 0.005, 0.01, 0.02, 0.05)):
-    """Per-class detection rate across a range of FPR budgets. Thresholds come
-    from the validation scores (not the test benign quantiles, which would be an
-    oracle threshold); the achieved test FPR is recorded per row."""
     rows = {}
     for b in budgets:
         thr = thr_max_recall(y_va, va_score, b)

@@ -1,13 +1,3 @@
-"""Integrity audit for the connection-window context features.
-
-  1. CAUSALITY  : rebuild the features after deleting every flow after a cut
-                  point. Features for flows before the cut must be identical.
-                  If a future flow influenced a past feature, this fails.
-  2. LABEL-FREE : confirm the builder never reads the label column.
-  3. FPR BUDGET : every model's test FPR is strictly inside the 1% ceiling.
-  4. IMPORTANCE : which context features carry the gain. Writes
-                  feature_importance.csv, consumed by show_results.py.
-"""
 import json
 from pathlib import Path
 
@@ -64,14 +54,6 @@ def check_label_free():
 
 
 def check_budget():
-    """The 1% ceiling is a Phase 3 flow-level constraint.
-
-    Phase 2 writes its packet detectors into the same results.json under
-    "phase2_*" keys. Those entries carry a "test" block rather than the
-    "test_tuned" a Phase 3 model has, and a stage-one detector is meant to run
-    at a much looser FPR, so including them here would both crash and fail the
-    check for the wrong reason.
-    """
     rows, ok = [], True
     results = json.loads((Path(OUT) / "results.json").read_text())
     for name, r in results.items():

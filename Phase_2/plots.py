@@ -1,20 +1,13 @@
-"""Plotting helpers for the Phase-2 report visuals.
-
-All functions save to ``results/figures`` and return the saved path so the runner
-can collect them. Matplotlib only (seaborn optional) to keep deps light.
-"""
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-# Keep matplotlib's cache inside the workspace (the default ~/.matplotlib may be
-# unwritable on this machine) and stay headless.
 os.environ.setdefault("MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplcache"))
 
 import matplotlib
 
-matplotlib.use("Agg")  # headless: write files, never open a window
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import (
@@ -80,13 +73,7 @@ def plot_embedding(
     method: str = "umap",
     max_points: int = 8000,
 ) -> Path:
-    """2-D scatter of learned embeddings colored by attack type (demo centerpiece).
-
-    Uses UMAP if available, otherwise falls back to PCA so it never hard-fails.
-    Benign points are subsampled so the rarer attacks stay visible.
-    """
     rng = np.random.default_rng(0)
-    # Subsample benign to keep the plot readable and fast on CPU.
     benign_idx = np.where(y_multi == C.BENIGN_LABEL)[0]
     attack_idx = np.where(y_multi != C.BENIGN_LABEL)[0]
     keep_benign = rng.choice(benign_idx, size=min(max_points, len(benign_idx)), replace=False)
@@ -96,7 +83,7 @@ def plot_embedding(
 
     if method == "umap":
         try:
-            import umap  # type: ignore
+            import umap
 
             reducer = umap.UMAP(n_components=2, random_state=0)
             E2 = reducer.fit_transform(E)

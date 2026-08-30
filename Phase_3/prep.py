@@ -1,11 +1,3 @@
-"""Phase 3 dataset prep: merge the flow features, the 23 context features and the
-Task 3.1 anomaly scores, split 60/20/20, impute, and save splits.npz.
-
-Median imputation is fitted on the training split only; fitting it over the whole
-dataset before splitting would leak test information. Capture Timestamp, Dst Port
-and Protocol are saved alongside the splits for eval_session_holdout.py but are
-never used as features.
-"""
 import json
 import numpy as np
 import pandas as pd
@@ -24,7 +16,6 @@ def load_flow_data():
 
 
 def merge_anomaly_scores(df):
-    """Task 3.1 -> 3.2 link: attach phase-2 flow anomaly score/flag by Flow ID."""
     sc = pd.read_csv(FLOW_DATA_DIR / "task3_1_flow_anomaly_scores.csv")
     sc = sc.drop_duplicates(subset="Flow ID", keep="first")
     df = df.merge(sc, on="Flow ID", how="left")
@@ -35,9 +26,6 @@ def merge_anomaly_scores(df):
 
 
 def merge_context_features(df):
-    """Attach the connection-window context features (build_context_features.py),
-    joined by Flow ID. They target the multi-flow classes (brute force, DNS
-    spoofing, XSS) where per-flow models plateau."""
     path = f"{OUT}/context_features.parquet"
     if not Path(path).exists():
         raise FileNotFoundError(
@@ -51,7 +39,6 @@ def merge_context_features(df):
 
 
 def merge_capture_metadata(df):
-    """Join capture Timestamp / Dst Port / Protocol. Diagnostics only, never features."""
     ids = pd.read_csv(FLOW_DATA_DIR / "flow_data_ids.csv")
     ids.columns = [c.strip() for c in ids.columns]
     ids = ids.drop_duplicates(subset="Flow ID", keep="first")
@@ -62,8 +49,6 @@ def merge_capture_metadata(df):
 
 
 def make_features_and_target(df):
-    """Split off features and targets. Imputation is deliberately not done here;
-    it is fitted on the training rows only, in main(), to avoid leakage."""
     y_type = df["label"].astype(str)
     y = (y_type != "benign").astype(int)
     meta_cols = ["label", "Flow ID", "Timestamp", "Dst Port", "Protocol", "capture_day"]
@@ -73,7 +58,6 @@ def make_features_and_target(df):
 
 
 def split(X, y, y_type, seed=SEED):
-    """Stratify on attack type so every class appears in every split (60/20/20)."""
     idx = np.arange(len(y))
     tr, tmp = train_test_split(idx, test_size=0.40, random_state=seed, stratify=y_type)
     va, te = train_test_split(tmp, test_size=0.50, random_state=seed, stratify=y_type[tmp])
@@ -81,7 +65,6 @@ def split(X, y, y_type, seed=SEED):
 
 
 def impute_from_train(X, tr):
-    """Fit medians on the training rows only, then fill every split with them."""
     med = X.iloc[tr].median(numeric_only=True)
     med = med.fillna(0.0)
     return X.fillna(med).astype(np.float32), med
@@ -123,7 +106,6 @@ def main():
     with open(f"{OUT}/prep_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
 
-    # Train medians, so the two-stage step can impute the alert flows the same way.
     with open(f"{OUT}/train_medians.json", "w") as f:
         json.dump({c: float(med.get(c, 0.0)) for c in cols}, f)
     print(json.dumps({k: v for k, v in meta.items() if k != "features"}, indent=2))

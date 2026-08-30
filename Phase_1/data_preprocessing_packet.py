@@ -10,7 +10,6 @@ from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-# File names
 FILE_GROUPS = {
     'benign':       ['BenignTraffic.csv', 'BenignTraffic1.csv',
                      'BenignTraffic2.csv', 'BenignTraffic3.csv'],
@@ -31,20 +30,6 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RANDOM_STATE = 42
 
-# Packet-level relabeling
-#
-# The captures are labeled per-pcap, NOT per-packet (see raw data README:
-# "The data has not been labeled on a row basis"). Each attack capture also
-# recorded the background traffic of the ~45 testbed IoT devices, so most
-# rows in an "attack" file are behaviorally benign. We therefore relabel per packet 
-# using the attack endpoints, identified empirically from the captures:
-#   dos:          192.168.137.66  sends >98k HTTP-flood requests at victims
-#   ddos:         192.168.137.139 is the victim; 13 sources flood it on :80
-#   brute_force:  192.168.137.65  runs SSH(:22)/RTSP(:554) dictionary attempts
-#   xss:          192.168.137.147 is the sole source of URIs with XSS payloads
-#   dns_spoofing: dc:a6:32:dc:27:d5 (Raspberry Pi) ARP-spoofs the gateway IP
-#                 (192.168.137.1) and forges DNS answers -> match by MAC,
-#                 since the MITM attacker impersonates other hosts' IPs.
 ATTACK_RULES = {
     'dos':          {'ips':  ['192.168.137.66']},
     'ddos':         {'ips':  ['192.168.137.139']},
@@ -68,7 +53,6 @@ def relabel_packets(df, group):
           f"attack ({mask.mean():.1%}); rest -> benign background")
     return df
 
-# Load Datasets
 def load_packet_data(path, file_name):
     return pd.concat([pd.read_csv(path / f, low_memory=False) for f in file_name],
                      ignore_index=True)
@@ -81,7 +65,6 @@ def load_all_datasets(path):
         dfs.append(df)
     return pd.concat(dfs, ignore_index=True)
 
-# Task 1.1. Create Function for Random Sampling
 def random_sampling(df, n_samples, random_state=None):
     if len(df) < n_samples:
         print(f"[sampling] Warning: requested {n_samples} rows but only "
@@ -101,17 +84,13 @@ def subsample_by_label(packet_df, n_benign=200000, n_attack=1200, random_state=4
     print(f"Number of Samples from each Label:\n{sampled_df['label'].value_counts()}")
     return sampled_df
 
-# Feature Engineering
 def _num(s):
     return pd.to_numeric(s, errors='coerce')
 
 URI_SPECIAL_CHARS = r"""[<>'"%;()=&]"""
 
 def engineer_content_features(df):
-    """
-    Content-level features for application-layer attacks.
-    """
-    uri = df['http_uri'].astype(str).replace('none', '')
+    uri = df['http_uri'].fillna('nan').astype(str).replace('none', '')
     df['uri_length'] = uri.str.len()
     df['uri_special_chars'] = uri.str.count(URI_SPECIAL_CHARS)
     df['uri_param_count'] = uri.str.count('&') + uri.str.contains(r'\?').astype(int)
@@ -120,35 +99,28 @@ def engineer_content_features(df):
     qry = _num(df['dns_len_qry']).fillna(0)
     ans = _num(df['dns_len_ans']).fillna(0)
     df['dns_is_answer'] = (ans > 0).astype(int)
-    df['dns_ans_qry_ratio'] = ans / (qry + 1.0)  # spoofed answers are oversized
+    df['dns_ans_qry_ratio'] = ans / (qry + 1.0)
 
     payload = _num(df['payload_length']).fillna(0).clip(lower=0)
     eth = _num(df['eth_size']).fillna(0)
-    df['payload_ratio'] = payload / (eth + 1.0)  # payload share of the frame
+    df['payload_ratio'] = payload / (eth + 1.0)
     return df
 
 def engineer_volumetric_features(df):
-    """
-    Scale-invariant traffic-shape ratios for flood attacks.
-    """
     for scope in ['stream', 'src_ip', 'channel']:
         c5  = _num(df[f'{scope}_5_count']).fillna(0)
         c60 = _num(df[f'{scope}_60_count']).fillna(0)
         m5  = _num(df[f'{scope}_5_mean']).fillna(0)
         v5  = _num(df[f'{scope}_5_var']).fillna(0)
-        df[f'{scope}_burst_persistence'] = c60 / (c5 + 1.0)  # sustained flood >> 1
-        df[f'{scope}_fano_5'] = v5 / (m5.abs() + 1e-6)       # floods: near-0 (constant pkt size)
-        df[f'{scope}_rate_5'] = c5 / 5.0                     # packets/second
+        df[f'{scope}_burst_persistence'] = c60 / (c5 + 1.0)
+        df[f'{scope}_fano_5'] = v5 / (m5.abs() + 1e-6)
+        df[f'{scope}_rate_5'] = c5 / 5.0
     return df
 
-# Endpoint semantics + repetition features (brute-force oriented)
-# Ports 554 (RTSP) and 8009 are included: the dictionary attack in this
-# dataset targets them alongside SSH (22).
 LOGIN_OR_WEB_PORTS = frozenset({21, 22, 23, 80, 443, 554, 8009, 8080, 8443})
 EPHEMERAL_PORT_START = 49152
 
 def _ip_property_flag(ip_series, attr):
-    """int8 flag for an ipaddress property, evaluated once per unique value."""
     def flag(v):
         try:
             return int(getattr(ipaddress.ip_address(str(v)), attr))
@@ -159,7 +131,6 @@ def _ip_property_flag(ip_series, attr):
     return ip_series.map(mapping).astype('int8')
 
 def engineer_endpoint_semantics(df):
-    """Low-dimensional IP/port semantics instead of one-hot raw identifiers."""
     df['src_ip_is_private'] = _ip_property_flag(df['src_ip'], 'is_private')
     df['dst_ip_is_private'] = _ip_property_flag(df['dst_ip'], 'is_private')
     df['dst_ip_is_multicast'] = _ip_property_flag(df['dst_ip'], 'is_multicast')
@@ -173,12 +144,9 @@ def engineer_endpoint_semantics(df):
     return df
 
 def _keys(df, cols):
-    """Grouping keys as strings so NaN identifiers don't drop rows."""
-    return [df[c].astype(str) for c in cols]
+    return [df[c].fillna('nan').astype(str) for c in cols]
 
 def _rolling_group_count(df, cols, window):
-    """Packets from the same group among the last `window` rows (inclusive).
-    """
     n = len(df)
     group_id = df.groupby(_keys(df, cols), sort=False).ngroup().to_numpy(np.int64)
     enc = group_id * (n + window) + np.arange(n, dtype=np.int64)
@@ -188,12 +156,6 @@ def _rolling_group_count(df, cols, window):
     return pd.Series((rank - left).astype('int32'), index=df.index)
 
 def engineer_repetition_features(df):
-    """Backward-looking repetition/diversity counts (brute-force signature:
-    one source hammering one destination:port, especially login services).
-
-    Counts run over the sampled row order (no timestamp survives
-    preprocessing).
-    """
     eps = 1e-9
     src = df.groupby(_keys(df, ['src_ip']), sort=False).cumcount() + 1
     src_dst = df.groupby(_keys(df, ['src_ip', 'dst_ip']), sort=False).cumcount() + 1
@@ -203,24 +165,21 @@ def engineer_repetition_features(df):
     df['src_dst_port_packets_seen_so_far'] = src_dst_port
     df['stream_packets_seen_so_far'] = df.groupby(_keys(df, ['stream']), sort=False).cumcount() + 1
 
-    # Cumulative fan-out: is this source spreading across many targets/ports?
     def cum_unique(first_seen_cols, group_col):
         first = ~df.duplicated(first_seen_cols)
-        return first.groupby(df[group_col].astype(str)).cumsum().astype('int32')
+        return first.groupby(df[group_col].fillna('nan').astype(str)).cumsum().astype('int32')
 
     df['src_unique_dst_ips_seen_so_far'] = cum_unique(['src_ip', 'dst_ip'], 'src_ip')
     df['src_unique_dst_ports_seen_so_far'] = cum_unique(['src_ip', 'dst_port'], 'src_ip')
     df['stream_unique_dst_ips_seen_so_far'] = cum_unique(['stream', 'dst_ip'], 'stream')
     df['stream_unique_dst_ports_seen_so_far'] = cum_unique(['stream', 'dst_port'], 'stream')
 
-    # Repetition vs diversity ratios
     df['src_dst_port_repeat_ratio'] = src_dst_port / (src + eps)
     df['src_dst_repeat_ratio'] = src_dst / (src + eps)
     df['src_dst_port_login_attempt_score'] = src_dst_port * df['dst_port_is_login_or_web']
     df['src_port_diversity_ratio'] = df['src_unique_dst_ports_seen_so_far'] / (src + eps)
     df['src_dst_diversity_ratio'] = df['src_unique_dst_ips_seen_so_far'] / (src + eps)
 
-    # Short-horizon activity counts
     df['src_count_last_100_packets'] = _rolling_group_count(df, ['src_ip'], 100)
     df['src_dst_count_last_100_packets'] = _rolling_group_count(df, ['src_ip', 'dst_ip'], 100)
     df['src_dst_port_count_last_100_packets'] = _rolling_group_count(df, ['src_ip', 'dst_ip', 'dst_port'], 100)
@@ -228,21 +187,10 @@ def engineer_repetition_features(df):
     return df
 
 def propagate_stream_content(df):
-    """
-    Every packet inherits the worst content signal seen in its conversation.
-
-    Most packets of an attack stream are bare SYN/ACKs with no payload —
-    content-identical to benign traffic. Propagating the per-stream max of
-    the content features onto every sibling packet makes the whole attack
-    conversation separable, not just the one packet carrying the payload.
-    """
     keys = ['stream', 'src_ip', 'dst_ip']
     grp = df.groupby(keys)
     for col in ['uri_special_chars', 'uri_length', 'dns_ans_qry_ratio']:
         df[f'stream_max_{col}'] = grp[col].transform('max')
-    # Multiple DNS answers in one conversation = the spoofing race signature
-    # (forged answer + the real one both arrive). Requires dns_is_answer from
-    # engineer_content_features(), so keep the call order in main().
     df['stream_dns_answer_count'] = grp['dns_is_answer'].transform('sum')
     return df
 
@@ -252,10 +200,6 @@ CAPTURE_ARTIFACT_COLS = ['min_et', 'q1', 'min_e', 'var_e', 'q1_e', 'most_freq_sp
 def drop_capture_artifacts(df):
     return df.drop(columns=[c for c in CAPTURE_ARTIFACT_COLS if c in df.columns])
 
-# Heavy-tailed counts/sizes: a DoS packet can have stream_5_count in the
-# thousands vs single digits for benign. Without log compression these few
-# columns dominate every Euclidean distance (k-means) and reconstruction
-# loss (autoencoder), and the content features become invisible.
 LOG_COL_PATTERN = re.compile(
     r"(_count$|_var$|_sum$|_len$|_len_|length$|size$|_p$|_rate_5$"
     r"|_burst_persistence$|_fano_5$|jitter$"
@@ -270,17 +214,13 @@ def log_transform_skewed(X):
     return X
 
 
-# Task 1.2: Data Preprocessing
-## Handle Missing Values
 def binary_flags(df, flag_cols):
     df[flag_cols] = df[flag_cols].replace(['none', 'None', 'NaN'], np.nan).infer_objects(copy=False)
     for col in flag_cols:
         df[f"has_{col}"] = df[col].notna().astype(int)
     return df.drop(columns=flag_cols)
 
-## Extract Identifiers
 def extract_identifiers(df, id_cols, output_path=None):
-    """Assign a permanent row id, split off identifier columns into a lookup table."""
     df = df.reset_index(drop=True)
     df['id'] = df.index
     identifiers_lookup = df[['id'] + id_cols].copy()
@@ -288,7 +228,6 @@ def extract_identifiers(df, id_cols, output_path=None):
         identifiers_lookup.to_csv(output_path, index=False)
     return df, identifiers_lookup
 
-## Outlier Detection using Isolation Forest
 class IsolationForestFilter(BaseEstimator, TransformerMixin):
     def __init__(self, contamination=0.5, random_state=42):
         self.contamination = contamination
@@ -309,7 +248,6 @@ class IsolationForestFilter(BaseEstimator, TransformerMixin):
 
 
 def _impute_per_label(df, feature_cols, fill_zero_cols, mean_impute_cols, mode_impute_cols):
-    """Fill NaNs within each label so attack and benign keep their own means."""
     chunks = []
     for label, group in df.groupby('label'):
         sub = group[feature_cols + ['id']].copy()
@@ -334,7 +272,6 @@ def _encode_categoricals(df, mode_impute_cols):
     return pd.concat([df.drop(columns=mode_impute_cols), encoded], axis=1)
 
 def _remove_outliers_per_label(df, contamination_benign=0.05, contamination_attack=0.01):
-    """Isolation Forest per label."""
     final_df = []
     for label, group in df.groupby('label'):
         sub = group.drop(columns='label')
@@ -345,13 +282,6 @@ def _remove_outliers_per_label(df, contamination_benign=0.05, contamination_atta
     return pd.concat(final_df, ignore_index=True)
 
 def clean_all_labels(sampled_df, fill_zero_cols, mean_impute_cols, mode_impute_cols, id_cols):
-    """
-    Stage 1: Impute missing values per label
-    Stage 2: One-Hot Encoding on the entire DF
-    State 3: Outliers Removal using Isolation Forest per label
-        contamination = 0.05 for 'benign'
-        contamination = 0.01 for 'attack'
-    """
     drop_cols = id_cols + ['inter_arrival_time', 'label']
     feature_cols = [c for c in sampled_df.columns if c not in drop_cols and c != 'id']
     df = _impute_per_label(sampled_df, feature_cols, fill_zero_cols, mean_impute_cols, mode_impute_cols)
@@ -360,7 +290,6 @@ def clean_all_labels(sampled_df, fill_zero_cols, mean_impute_cols, mode_impute_c
     return df
 
 
-## Normalization/Scaling and Dimension Reduction
 def normalization():
     pipeline = Pipeline([
         ('scaler', StandardScaler())
@@ -375,12 +304,6 @@ ALWAYS_KEEP = [
 
 def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_state=42,
                               always_keep=None):
-    """
-    Feature Selection using Forest/Random Forest method.
-    Selecting the most important features that explain 95% of the prediction cummulatively.
-    Each type of attack is compared with benign to select the specific features that are important to that attack.
-    Finally, take the union of all selected features, discard any features that do not contribute to detecting any type of attack.
-    """
     labels = y.unique()
     attacks = labels[labels != 'benign']
 
@@ -394,14 +317,13 @@ def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_sta
         )
         rf.fit(X[mask], y[mask])
 
-        # Rank features by importance, pick the top N that cover threshold cumulatively
         importances = pd.Series(rf.feature_importances_, index=X.columns).sort_values(ascending=False)
         n_keep = (importances.cumsum() < threshold).sum() + 1
         kept_cols.append(importances.head(n_keep).index)
         contributions.append(importances.rename(attack))
 
     whitelist = set(ALWAYS_KEEP) | set(always_keep or [])
-    kept_cols = sorted(set().union(*kept_cols)              # union across attacks, no redundant features
+    kept_cols = sorted(set().union(*kept_cols)
                        | {c for c in whitelist if c in X.columns})
     dropped_cols = [c for c in X.columns if c not in kept_cols]
 
@@ -412,13 +334,11 @@ def _FOR_reduction_per_attack(X, y, threshold=0.95, n_estimators=300, random_sta
 
     return X_final, kept_cols
 
-    
+
 def main():
     packet_df = load_all_datasets(PACKET_DATA_FILE_PATH)
     sampled_df = subsample_by_label(packet_df)
 
-    # Create ID column for downstream lookup
-    # Identifier columns
     id_cols = [
         'stream',
         'src_mac',
@@ -436,18 +356,16 @@ def main():
         sampled_df, id_cols, output_path=OUTPUT_DIR / 'packet_data_ids.csv'
     )
 
-    # Feature engineering
     pre_engineering_cols = set(sampled_df.columns)
     sampled_df = engineer_content_features(sampled_df)
     sampled_df = engineer_volumetric_features(sampled_df)
-    sampled_df = engineer_endpoint_semantics(sampled_df)   # these three need id_cols,
-    sampled_df = engineer_repetition_features(sampled_df)  # so they run before
-    sampled_df = propagate_stream_content(sampled_df)      # clean_all_labels drops them
+    sampled_df = engineer_endpoint_semantics(sampled_df)
+    sampled_df = engineer_repetition_features(sampled_df)
+    sampled_df = propagate_stream_content(sampled_df)
     sampled_df = drop_capture_artifacts(sampled_df)
     engineered_cols = sorted(set(sampled_df.columns) - pre_engineering_cols)
     print(f"[feature-eng] {len(engineered_cols)} engineered features (RF-exempt)")
 
-    # Create Binary Flags for Categorical Columns
     flag_cols = [
         'tls_server',
         'http_request_method',
@@ -460,8 +378,6 @@ def main():
 
     df = binary_flags(sampled_df, flag_cols)
 
-
-    # Fill Missing Values and Remove Outliers
     fill_zero_cols = [
         'dns_query_type', 'jitter',
         'stream_1_var', 'src_ip_1_count', 'src_ip_1_mean', 'src_ip_1_var',
@@ -484,23 +400,17 @@ def main():
                                 categorical_cols,
                                 id_cols)
 
-    # Keep id out of the feature matrix so it survives scaling/PCA/FOR and we can
-    # join back to packet_data_ids.csv in Phase 3.
     ids = clean_df['id'].astype(int)
     y = clean_df['label']
     X = clean_df.drop(columns=['id', 'label'])
 
-    # Compress heavy tails before any scaling / feature selection
     X = log_transform_skewed(X)
 
-    # Normalized Original Dataset (no dimension reduction)
     full_ds = pd.DataFrame(normalization().fit_transform(X), columns=X.columns)
     full_ds['id'] = ids.values
     full_ds['label'] = y.values
     full_ds.to_csv(OUTPUT_DIR/"normalized_original_data.csv", index=False)
 
-
-    # Random Forest feature selection (95% cumulative importance)
     for_arr, selected_cols = _FOR_reduction_per_attack(X, y, threshold=0.95,
                                                        always_keep=engineered_cols)
 
