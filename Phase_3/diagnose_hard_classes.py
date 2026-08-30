@@ -1,14 +1,3 @@
-"""Why do brute force, DNS spoofing and XSS detect so poorly?
-
-Runs five checks against the saved splits and the trained XGBoost and RF models,
-writing hard_class_diagnostics.json plus a readable console report:
-
-  1. Class balance          are the hard classes simply rarer?
-  2. Score distributions    is the model ranking them badly, or is the threshold too high?
-  3. Detection vs FPR budget how much of the loss is the operating point alone
-  4. Label integrity        duplicate feature vectors and benign/attack label collisions
-  5. Service context        Dst Port and Protocol mix per class against benign
-"""
 import json
 from collections import Counter
 from pathlib import Path

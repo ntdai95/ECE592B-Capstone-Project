@@ -1,27 +1,3 @@
-"""Combined two-stage system: stage 1 (Phase 2 autoencoder) -> stage 2 (the best
-Phase 3 flow classifier).
-
-The cascade the brief describes: stage 1 flags packet-level alerts, stage 2
-re-checks the flows behind them, and an item is finally called an attack only if
-stage 1 alerts it AND stage 2 confirms it. Items stage 1 never alerts stay benign.
-
-Stage 2 is the leaderboard's highest-recall model (auto-selected from
-results.json), scored on the alert flows in the exact feature space it was trained
-on: the alert flows were normalised once in flow_based_feature_engineering.py with
-the same fitted scaler as the training data, so nothing is re-scaled here. The
-context and Task 3.1 columns are joined raw by Flow ID (as in prep.py) and any
-gaps filled with the training medians.
-
-Inputs, all already written by the pipeline:
-  - results.json["phase2_autoencoder"]["test"]     stage 1 test confusion
-  - phase2_alert_corresponding_flows.csv            normalised alert flows
-  - context_features.parquet, task3_1 scores        the two engineered blocks
-  - prep_meta.json, train_medians.json              feature order + imputation
-  - model_*.joblib                                  the fitted stage-2 models
-
-Alerts with no matching flow keep stage 1's decision, so the combined counts sum
-back to the full stage-1 test set.
-"""
 import json
 
 import joblib
@@ -40,13 +16,11 @@ NICE = {
 
 
 def best_model(results):
-    """The leaderboard model with the highest tuned test recall."""
     cands = [(k, results[k]["test_tuned"]["recall"]) for k in NICE if k in results]
     return max(cands, key=lambda x: x[1])[0]
 
 
 def attack_scores(model_key, X):
-    """Attack probability from a fitted model, in the training feature space."""
     if model_key == "random_forest":
         return joblib.load(f"{OUT}/model_rf.joblib").predict_proba(X)[:, 1]
     if model_key == "xgboost":
@@ -68,7 +42,6 @@ def attack_scores(model_key, X):
 
 
 def build_alert_features(features, medians):
-    """Alert-flow feature matrix in prep.py's exact column order and space."""
     df = pd.read_csv(ALERT_CSV)
     df.columns = [c.strip() for c in df.columns]
 
@@ -94,10 +67,9 @@ def combined_counts(stage1, packet_label, stage2_attack):
     is_benign = packet_label == "benign"
     n_fp_mapped = int(is_benign.sum())
     n_tp_mapped = int((~is_benign).sum())
-    cleared = int((is_benign & ~stage2_attack).sum())     # benign alerts stage 2 clears
-    retained = int((~is_benign & stage2_attack).sum())    # attack alerts stage 2 keeps
+    cleared = int((is_benign & ~stage2_attack).sum())
+    retained = int((~is_benign & stage2_attack).sum())
 
-    # Alerts with no matching flow keep stage 1's decision (still an alert).
     unmapped_fp = max(fp1 - n_fp_mapped, 0)
     unmapped_tp = max(tp1 - n_tp_mapped, 0)
 

@@ -1,19 +1,3 @@
-"""Print the whole pipeline's results from the saved artifacts, and write the
-two summary CSVs. Read-only with respect to the models, about one second.
-
-Nothing is retrained. This formats results.json and the audit JSON files
-already sitting in results/, and emits leaderboard.csv and
-per_attack_detection.csv from them.
-
-Both stages report here. The Phase 2 packet detectors write into the same
-results.json under "phase2_*" keys, so packet-level and flow-level detection
-print in one run instead of the packet numbers living only in notebook output.
-
-    python show_results.py            # everything
-    python show_results.py --brief    # leaderboard + per-attack only
-
-To regenerate the underlying numbers, run `python run_all.py` (about 20 min).
-"""
 import argparse
 import csv
 import json
@@ -55,9 +39,6 @@ def load_results():
 
 
 def load_phase2():
-    """Phase 2 entries are keyed "phase2_*" and carry a "test" block, not the
-    "test_tuned"/"per_attack_tuned" pair a Phase 3 model has, so load_results()
-    skips them and they are read separately here."""
     f = OUT / "results.json"
     if not f.exists():
         return []
@@ -114,8 +95,6 @@ def t_phase2(p2):
 
 
 def t_phase2_sweeps(p2):
-    """Print each detector's validation hyperparameter sweep, if it recorded one,
-    so the selected setting can be read against its neighbours."""
     for name, r in p2:
         sweep = r.get("params", {}).get("sweep")
         if not isinstance(sweep, dict) or not sweep:
@@ -260,9 +239,6 @@ def t_context():
 
 
 def t_anomaly_ablation():
-    """Per-model Task 3.1 ablation, from the "<model>__no_anomaly" keys: every
-    model retrained without the three anomaly columns, so the contribution is
-    measured across architectures rather than argued from one."""
     f = OUT / "results.json"
     if not f.exists():
         return
@@ -295,8 +271,6 @@ def t_anomaly_ablation():
         print("  `python train_models.py --drop-anomaly` to complete the table before quoting it.")
         return
 
-    # Split the models by how well they do WITH the columns, because the answer
-    # turns out to depend on that and reporting one average would hide it.
     strong = [(n, o["recall"] - w["recall"]) for n, w, o in pairs if w["recall"] >= 0.85]
     weak = [(n, o["recall"] - w["recall"]) for n, w, o in pairs if w["recall"] < 0.85]
     if strong and weak:
@@ -432,7 +406,6 @@ def t_session():
 
 
 def t_two_stage():
-    """Combined system: stage 1 autoencoder alerts re-checked by stage 2."""
     f = OUT / "results.json"
     if not f.exists():
         return
@@ -458,7 +431,6 @@ def t_two_stage():
 
 
 def render(brief=False):
-    """Print every results table from the saved artifacts. Called by run_all.py."""
     rows = load_results()
     if not rows:
         raise SystemExit("No results.json found. Run `python run_all.py` first.")

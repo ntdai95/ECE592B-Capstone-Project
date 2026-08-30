@@ -1,11 +1,3 @@
-"""Connection-window (multi-flow context) features, following the KDD'99
-count / srv_count / same_srv_rate family. Per source and destination IP, over
-trailing 2s and 60s windows, plus statistics over the previous 100 connections.
-
-Computed over the full capture (what a live detector observes) and joined back to
-the modelling rows by Flow ID. Strictly causal: only flows at or before the
-current flow's timestamp contribute, so no future information enters a feature.
-"""
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -28,8 +20,6 @@ def _load():
 
 
 def _window_block(t, dport, dip, key, wsec):
-    """Two-pointer causal sweep within one key group. Returns exact counts and
-    distinct counts over the trailing wsec-second window."""
     n = len(t)
     cnt = np.zeros(n, np.float32)
     n_port = np.zeros(n, np.float32)
@@ -62,8 +52,6 @@ def _window_block(t, dport, dip, key, wsec):
 
 
 def _last_n_block(dport, dip, n_back=LAST_N):
-    """Host-based: over the previous n_back connections from this source,
-    what fraction share this flow's service / destination."""
     n = len(dport)
     same_srv = np.zeros(n, np.float32)
     same_dst = np.zeros(n, np.float32)

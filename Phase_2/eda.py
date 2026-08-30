@@ -1,20 +1,3 @@
-"""Exploratory data analysis to drive Phase-2 model selection.
-
-This is intentionally *diagnostic*: every section answers a question that changes
-which unsupervised model we should pick.
-
-  1. data quality   -> scaler, missing values, zero-variance & duplicate rows
-  2. detectability  -> per-attack single-feature ROC-AUC (which attacks are easy
-                       to separate from benign, and on which features)
-  3. dimensionality -> PCA explained variance (does a linear subspace suffice?)
-  4. topology       -> per-attack fan-in / fan-out / edge multiplicity (does the
-                       communication graph carry attack signal? justifies the GNN)
-
-Labels are used here ONLY for analysis, never for training.
-
-Run:  python -m Phase_2.eda            (full)
-      python -m Phase_2.eda --quick    (subsample benign for speed)
-"""
 from __future__ import annotations
 
 import argparse
@@ -29,9 +12,6 @@ from . import config as C
 from .data import load_feature_table, to_dataset
 
 
-# ---------------------------------------------------------------------------
-# 1. Data quality
-# ---------------------------------------------------------------------------
 def _guess_scaler(X: np.ndarray) -> str:
     gmin, gmax, gmean = X.min(), X.max(), X.mean()
     if gmin >= -1e-6 and gmax <= 1 + 1e-6:
@@ -69,9 +49,6 @@ def data_quality_report(feature_set: str) -> None:
     print(f"duplicate feature rows (ignoring id): {dups} ({dups / len(df) * 100:.2f}%)")
 
 
-# ---------------------------------------------------------------------------
-# 2. Per-attack single-feature detectability
-# ---------------------------------------------------------------------------
 def detectability_report(feature_set: str, benign_sample: int = 20000, seed: int = 0) -> None:
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
@@ -97,7 +74,7 @@ def detectability_report(feature_set: str, benign_sample: int = 20000, seed: int
             if col.std() < 1e-12:
                 continue
             a = roc_auc_score(y, col)
-            aucs[j] = max(a, 1 - a)  # directed detectability
+            aucs[j] = max(a, 1 - a)
         order = np.argsort(aucs)[::-1]
         n_strong = int((aucs >= 0.80).sum())
         best = ", ".join(f"{ds.feature_names[j]}({aucs[j]:.2f})" for j in order[:5])
@@ -105,9 +82,6 @@ def detectability_report(feature_set: str, benign_sample: int = 20000, seed: int
               f"| top: {best}")
 
 
-# ---------------------------------------------------------------------------
-# 3. Intrinsic dimensionality
-# ---------------------------------------------------------------------------
 def dimensionality_report(feature_set: str, sample: int = 40000, seed: int = 0) -> None:
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
@@ -125,9 +99,6 @@ def dimensionality_report(feature_set: str, sample: int = 40000, seed: int = 0) 
           f"(used for the EDA scatter plot)")
 
 
-# ---------------------------------------------------------------------------
-# 4. Graph topology per attack type
-# ---------------------------------------------------------------------------
 def topology_report() -> None:
     ids = pd.read_csv(C.IDS_CSV)
     labels = load_feature_table("normalized")[[C.ID_COL, C.LABEL_COL]]
@@ -145,9 +116,9 @@ def topology_report() -> None:
         sub = g[g[C.LABEL_COL] == cls]
         if sub.empty:
             continue
-        fan_in = sub.groupby("dst_ip")["src_ip"].nunique()     # DDoS: many srcs -> one dst
-        fan_out = sub.groupby("src_ip")["dst_ip"].nunique()    # scanning / spread
-        mult = sub.groupby(["src_ip", "dst_ip"]).size()        # DoS: many pkts on few edges
+        fan_in = sub.groupby("dst_ip")["src_ip"].nunique()
+        fan_out = sub.groupby("src_ip")["dst_ip"].nunique()
+        mult = sub.groupby(["src_ip", "dst_ip"]).size()
         top_dst_share = sub["dst_ip"].value_counts(normalize=True).iloc[0] * 100
         print(f"  {cls:13s} {len(sub):>7d} {sub['src_ip'].nunique():>6d} "
               f"{sub['dst_ip'].nunique():>6d} {fan_in.max():>10d} {fan_out.max():>11d} "

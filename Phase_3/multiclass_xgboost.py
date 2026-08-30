@@ -1,12 +1,3 @@
-"""Task 3.3 signature-based IDS: multiclass XGBoost.
-
-Kept close to the original standalone detector. The only change for the unified
-pipeline is the data source: it reads the shared 60/20/20 split built by prep.py
-(the same altered dataset the other five models use) and records its attack score
-(1 - P(benign)) on the shared leaderboard, alongside its own per-class report and
-plots. main() runs it with and without the Task 3.1 columns. The two-stage
-false-positive reduction is handled centrally in two_stage_system.py.
-"""
 import json
 import time
 
@@ -26,7 +17,6 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 RANDOM_STATE = 1
 
-# Label mapping for multi-class classification
 LABEL_MAP = {
     'benign': 0,
     'dos': 1,
@@ -41,7 +31,6 @@ ANOMALY_COLS = ["flow_anomaly_score", "flow_anomaly_flag", "has_anomaly_score"]
 
 
 def load_supervised_flow_data(drop_anomaly=False):
-    # Load the shared split (flow + context + Task 3.1 anomaly features) from prep.py
     d = load_splits()
     feature_cols = json.loads((RESULTS_DIR / "prep_meta.json").read_text())["features"]
     keep = [i for i, c in enumerate(feature_cols) if c not in ANOMALY_COLS]
@@ -86,7 +75,6 @@ def xgb_classifier(depth, gamma):
 def train_xgboost_classifier(X_train, y_train, X_val, y_val):
     sample_weights = compute_sample_weight("balanced", y_train)
 
-    # Define hyperparameter grid for tuning
     max_depths = [4, 6, 8]
     gammas = [0.0, 0.1, 0.3]
 
@@ -120,7 +108,6 @@ def train_xgboost_classifier(X_train, y_train, X_val, y_val):
 
 
 def evaluate_supervised_stage(model, X_test, y_test, tag):
-    # Evaluate model
     start_time = time.time()
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)
@@ -130,7 +117,6 @@ def evaluate_supervised_stage(model, X_test, y_test, tag):
     target_names = [INV_LABEL_MAP[i] for i in sorted(INV_LABEL_MAP.keys())]
     print(classification_report(y_test, y_pred, target_names=target_names, digits=4))
 
-    # Save Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
     plt.figure(figsize=(9, 7))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=target_names, yticklabels=target_names)
@@ -141,7 +127,6 @@ def evaluate_supervised_stage(model, X_test, y_test, tag):
     plt.savefig(OUTPUT_DIR / f"multiclass_xgb_confusion_matrix{tag}.png", dpi=300)
     plt.close()
 
-    # Save Multi-Class ROC Curves
     plt.figure(figsize=(9, 7))
     for i, class_name in enumerate(target_names):
         fpr, tpr, _ = roc_curve((y_test == i).astype(int), y_prob[:, i])
@@ -164,27 +149,21 @@ def run_experiment(drop_anomaly, run_name):
 
     data = load_supervised_flow_data(drop_anomaly)
 
-    # Train XGBoost with hyperparameter tuning
     with Timer() as t:
         model = train_xgboost_classifier(data["X_train"], data["y_train"],
                                          data["X_val"], data["y_val"])
 
-    # Record the attack score (1 - P(benign)) on the shared leaderboard
     va = 1 - model.predict_proba(data["X_val"])[:, LABEL_MAP["benign"]]
     te = 1 - model.predict_proba(data["X_test"])[:, LABEL_MAP["benign"]]
     evaluate_and_save(f"multiclass_xgb{tag}", data["y_va_bin"], va,
                       data["y_te_bin"], te, data["t_te"], t.dt)
 
-    # Per-class report, confusion matrix and ROC curves
     evaluate_supervised_stage(model, data["X_test"], data["y_test"], tag)
     joblib.dump(model, f"{RESULTS_DIR}/model_multiclass{tag}.joblib", compress=3)
 
 
 def main():
-    # Full altered dataset (with the Task 3.1 features)
     run_experiment(drop_anomaly=False, run_name="Full feature set (with Task 3.1 features)")
-
-    # Ablation without the Task 3.1 features
     run_experiment(drop_anomaly=True, run_name="Without Task 3.1 features")
 
 

@@ -120,5 +120,4 @@ is fit on train edges only, with the threshold chosen on validation.
 - **Phase 3** (`Phase_3/flow_based_feature_engineering.py`) is a separate,
   flow-based track and is independent of Phase 2.
 
-See `docs/phase2_run_guide.md` for how to run it, and `docs/code_analysis_report.md`
-for the environment and dependency analysis.
+See `docs/phase2_run_guide.md` for how to run it.

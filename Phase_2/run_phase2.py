@@ -1,51 +1,30 @@
-"""Phase-2 orchestrator: run detectors, select thresholds, evaluate, and report.
-
-Usage examples
---------------
-  # quick smoke test on 20k rows
-  python -m Phase_2.run_phase2 --quick 20000 --models deep_svdd anomal_e fusion
-
-  # full headline run (normalized features), all models, 5 seeds
-  python -m Phase_2.run_phase2 --feature-set normalized --models all
-
-Outputs land in ``results/``:
-  * results_<feature_set>.csv        per-model, per-seed metrics + mean/std
-  * figures/*.png                    ROC / PR / confusion / per-attack / UMAP
-"""
 from __future__ import annotations
 
 import argparse
 import json
 import time
 
+import torch
 import numpy as np
 import pandas as pd
 
 from . import config as C
 from . import plots
 from .data import load_feature_table, stratified_split, subsample, to_dataset
-from .fusion import fuse, normalize_ref
+from .fusion import fuse
 from .metrics import aggregate_results, evaluate, pick_threshold
 from .preprocess import apply_scaler, drop_features, find_zero_variance, make_scaler
 
-# Default model line-up. NOTE: k-means and autoencoders are a teammate's
-# (Adam's) responsibility and are intentionally NOT implemented here.
 ALL_MODELS = [
-    "deep_svdd",                        # headline deep one-class method
-    "anomal_e",                         # GNN centerpiece
-    "fusion",                           # GNN + Deep SVDD score-level fusion
+    "deep_svdd",
+    "anomal_e",
+    "fusion",
 ]
 
-# Detectors whose normalized scores get combined in the fusion step.
 FUSION_PARTS = ["anomal_e", "deep_svdd"]
 
 
 def build_detector(name: str, seed: int, params: dict | None = None):
-    """Instantiate a detector by name for a given seed (lazy imports keep startup fast).
-
-    ``params`` are tuned hyperparameter overrides (from Phase_2.tune); empty = defaults.
-    k-means / autoencoder are deliberately omitted (teammate's scope).
-    """
     params = params or {}
     if name == "deep_svdd":
         from .detectors.deepsvdd import DeepSVDD
@@ -57,11 +36,6 @@ def build_detector(name: str, seed: int, params: dict | None = None):
 
 
 def _scores_for(name, det, train, val, test):
-    """Fit a detector and return (val_scores, test_scores, test_embeddings_or_None).
-
-    The GNN is transductive (needs all splits at once); everything else is the
-    standard fit-on-train / score interface.
-    """
     if name == "anomal_e":
         val_s, test_s = det.fit_score_transductive(train, val, test)
         return val_s, test_s, det.last_test_emb
@@ -70,12 +44,6 @@ def _scores_for(name, det, train, val, test):
 
 
 def _eval_two_points(val_scores, test_scores, val, test, primary_strategy):
-    """Evaluate at the primary operating point AND a balanced (Youden) point.
-
-    Reporting both prevents a 'recall_first' threshold from looking good on FNR
-    while silently flagging everything (review fix H1). ``target_met`` records
-    whether the recall target was actually reachable on validation.
-    """
     thr_p = pick_threshold(val_scores, val.y_bin, strategy=primary_strategy)
     res = evaluate(test_scores, test.y_bin, test.y_multi, thr_p)
 
@@ -85,7 +53,7 @@ def _eval_two_points(val_scores, test_scores, val, test, primary_strategy):
     val_recall = evaluate(val_scores, val.y_bin, val.y_multi, thr_p).recall
     extra = {
         "target_met": bool(val_recall >= C.TARGET_RECALL),
-        "degenerate": bool(res.fpr > 0.5),         # ~flag-everything warning
+        "degenerate": bool(res.fpr > 0.5),
         "bal_recall": res_b.recall, "bal_fnr": res_b.fnr, "bal_fpr": res_b.fpr,
         "bal_f1": res_b.f1, "bal_accuracy": res_b.accuracy,
     }
@@ -93,14 +61,9 @@ def _eval_two_points(val_scores, test_scores, val, test, primary_strategy):
 
 
 def run_seed(models, feature_set, seed, ds, strategy, scaler_name, best_params=None):
-    """Run every requested model for one seed; return rows + cached scores for fusion.
-
-    Scaling AND zero-variance feature dropping are fit on the TRAIN split only and
-    applied to val/test (no leakage). ``best_params`` supplies tuned hyperparameters.
-    """
     best_params = best_params or {}
     train, val, test = stratified_split(ds, seed=seed)
-    zv = find_zero_variance(train)                     # train-only (review fix M3)
+    zv = find_zero_variance(train)
     train, val, test = (drop_features(train, zv), drop_features(val, zv), drop_features(test, zv))
     scaler = make_scaler(scaler_name).fit(train.X)
     train, val, test = (apply_scaler(train, scaler), apply_scaler(val, scaler),
@@ -124,7 +87,6 @@ def run_seed(models, feature_set, seed, ds, strategy, scaler_name, best_params=N
               f"| bal: fnr={extra['bal_fnr']:.3f} fpr={extra['bal_fpr']:.3f} "
               f"acc={extra['bal_accuracy']:.3f} ({row['fit_sec']}s){flag}")
 
-    # --- Fusion: combine the GNN track with the feature-space track -----------
     if "fusion" in models:
         parts = [p for p in FUSION_PARTS if p in cache]
         if len(parts) >= 2:
@@ -147,7 +109,6 @@ def run_seed(models, feature_set, seed, ds, strategy, scaler_name, best_params=N
 
 
 def make_figures(cache, emb_cache, feature_set):
-    """Generate report figures from the first seed's cached scores."""
     for name, (val_s, test_s, val, test, res) in cache.items():
         tag = f"{name}_{feature_set}"
         plots.plot_roc(test_s, test.y_bin, name, f"roc_{tag}.png")
@@ -155,7 +116,6 @@ def make_figures(cache, emb_cache, feature_set):
         plots.plot_confusion(res.confusion, name, f"cm_{tag}.png")
         plots.plot_per_attack_dr(res.per_attack_dr, name, f"dr_{tag}.png")
 
-    # UMAP of Anomal-E edge embeddings, colored by attack type (demo centerpiece).
     if "anomal_e" in emb_cache:
         _, _, _, test, _ = cache["anomal_e"]
         plots.plot_embedding(emb_cache["anomal_e"], test.y_multi, "Anomal-E",
@@ -181,7 +141,6 @@ def main():
     C.ensure_dirs()
     models = ALL_MODELS if args.models == ["all"] else args.models
 
-    # Load tuned hyperparameters if available (from Phase_2.tune); drop nulls.
     best_params = {}
     bp_file = C.RESULTS_DIR / f"best_params_{args.feature_set}_{args.scaler}.json"
     if bp_file.exists() and not args.no_tuned:
@@ -219,7 +178,6 @@ def main():
     df_res.to_csv(out_csv, index=False)
     print(f"\nSaved per-seed metrics -> {out_csv}")
 
-    # Mean +/- std across seeds, per model.
     print("\n=== mean +/- std across seeds ===")
     summary_rows = []
     for name in df_res["model"].unique():
