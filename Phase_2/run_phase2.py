@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 import json
 import time
@@ -24,7 +22,7 @@ ALL_MODELS = [
 FUSION_PARTS = ["anomal_e", "deep_svdd"]
 
 
-def build_detector(name: str, seed: int, params: dict | None = None):
+def build_detector(name, seed, params=None):
     params = params or {}
     if name == "deep_svdd":
         from .detectors.deepsvdd import DeepSVDD
