@@ -1,27 +1,3 @@
-"""One-shot Phase 3 pipeline.
-
-Builds the context features and the shared split, trains the five binary models
-and the multiclass XGBoost, retrains them all without the Task 3.1 columns, then
-runs the validity checks (hard-class diagnostics, capture-session holdout with and
-without context, the context ablation, and the causality/label-free/budget
-audit). Finishes by printing the full results view via show_results.py, which
-also writes the two summary CSVs.
-
-The ablation stage is a second training pass, so it roughly doubles the training
-time. It is what lets the report answer "did Phase 2 actually help the flow
-classifier" per model rather than for one model alone.
-
-    python Phase_3/run_all.py                  # runs everything fresh
-    python Phase_3/run_all.py --skip-existing  # only runs the stages whose output is missing
-
-Model metrics accumulate in results/results.json, one key per model; the audits
-write their own JSON alongside it. Any single stage can be rerun on its own.
-
-The Phase 2 packet detectors write into the same results.json under "phase2_*"
-keys, so whatever has been recorded from them appears in the final printout
-alongside Phase 3. Stage order matters: build_context_features.py must run before
-prep.py, and the training scripts must run before the audits.
-"""
 import argparse
 import json
 import subprocess
@@ -49,9 +25,6 @@ STAGES = [
 
 
 def already_done(marker):
-    """Each stage is paired with the output that proves it already ran. A marker
-    of the form "file.json#key" means that key must be present inside that JSON.
-    """
     name, _, key = marker.partition("#")
     path = OUT / name
     if not path.exists():

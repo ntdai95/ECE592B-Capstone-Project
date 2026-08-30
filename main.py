@@ -1,27 +1,3 @@
-"""
-Runs the whole project end to end, in dependency order:
-
-  Phase 1   packet-level preprocessing and sampling
-  Phase 2   unsupervised packet-level anomaly detection (Anomaly-Based IDS)
-              - autoencoder benign-only detector, which also exports the alert
-                rows Phase 3 consumes
-              - Deep SVDD / Anomal-E / score-level fusion detector suite
-  Phase 3   supervised flow-level refinement (Signature-Based IDS)
-              - flow feature engineering + the unified altered dataset
-                (flow features + 23 connection-window context features)
-              - Task 3.1 flow-level anomaly scores
-              - context features, the shared train/val/test split, the six
-                classifiers, the Task 3.1 ablation, the validity analysis, and
-                the printed results tables
-
-    python main.py                  # run everything
-    python main.py --skip-existing  # only run stages whose output is missing
-    python main.py --phase 3        # run a single phase (1, 2 or 3)
-
-Each stage is a separate script so it can also be run on its own; this file just
-sequences them and stops at the first failure. Every result is written under
-results/ and data/processed_data/, both git-ignored.
-"""
 import argparse
 import os
 import subprocess
@@ -32,7 +8,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PY = sys.executable
 
-# (phase, label, command, output marker that proves the stage already ran)
 STAGES = [
     (1, "Phase 1  packet preprocessing and sampling",
      [PY, "Phase_1/data_preprocessing_packet.py"],

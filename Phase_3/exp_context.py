@@ -1,10 +1,3 @@
-"""Feature-group ablation: train the same XGBoost varying only the feature set,
-under two split regimes. A gain that appears under RANDOM but vanishes under
-SESSION is leakage, not detection.
-
-  arms:    base | base+context | no_anomaly (full minus the 3 Task 3.1 columns)
-  regimes: RANDOM (stratified 60/20/20) | SESSION (capture-day-disjoint)
-"""
 import json
 from pathlib import Path
 
@@ -54,8 +47,6 @@ def fit_score(X, y, tr, va, te, seed=SEED):
 
 
 def at_budget(y_va, va_score, y_te, t_te, score, budget=FPR_BUDGET):
-    """Threshold from the validation scores, applied to test. Sizing it on the
-    test benign scores would be an oracle threshold."""
     thr = thr_max_recall(y_va, va_score, budget)
     pred = (score >= thr).astype(int)
     per = {c: round(float((pred[t_te == c] == 1).mean()) * 100, 2)
@@ -80,8 +71,6 @@ def random_split(df):
 
 
 def session_split(df):
-    """Train on one capture day per class, test on another. The threshold set is
-    carved out of train, so no test-day information reaches the operating point."""
     from sklearn.model_selection import train_test_split
     day = df["capture_day"].to_numpy()
     lab = df["label"].to_numpy()

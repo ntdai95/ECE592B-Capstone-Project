@@ -1,30 +1,3 @@
-"""Systematic hyperparameter tuning for the GNN (Anomal-E) and Deep SVDD.
-
-Requirement (assignment §4.2.1): "Tune hyperparameters systematically where
-applicable." We do a grid search and select the configuration with the best
-**mean validation ROC-AUC across several seeds**.
-
-MULTI-SEED SELECTION (stability)
---------------------------------
-Selecting on a single seed picks whichever config got a lucky train/val split --
-that is exactly how Deep SVDD's earlier tuned config looked great on seed 0 yet
-collapsed on seeds 2-4. Each config is now scored on every ``--seeds`` value (own
-split + own train-fit scaler, identical to run_phase2) and ranked by the *mean*
-selection metric, with the per-seed std reported so instability is visible.
-
-LEAKAGE POLICY
---------------
-* Tuning uses ONLY the train + validation splits. The test split is never loaded
-  here, so model selection cannot leak into the reported test metrics.
-* For the transductive GNN, the message-passing graph is built over train+val
-  only (an empty test split is passed), so test topology is excluded too.
-* Selection metric is ROC-AUC (threshold-independent) rather than recall-at-a-
-  threshold, so tuning can't be gamed by a flag-everything operating point.
-
-Run:  python -m Phase_2.tune --feature-set normalized --scaler quantile --seeds 0 1 2
-Output: results/best_params_<feature_set>_<scaler>.json   (merged; consumed by run_phase2)
-        results/tuning_<feature_set>_<scaler>.csv          (full grid + val metrics)
-"""
 from __future__ import annotations
 
 import argparse
@@ -33,17 +6,17 @@ import json
 import time
 from dataclasses import replace
 
+import torch
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from . import config as C
 from .data import load_feature_table, stratified_split, subsample, to_dataset
-from .metrics import evaluate, pick_threshold
+from .metrics import aggregate_results, evaluate, pick_threshold
 from .preprocess import apply_scaler, drop_features, find_zero_variance, make_scaler
 
 
-# --- search spaces ----------------------------------------------------------
 GRIDS = {
     "deep_svdd": {
         "hidden_dims": [(64, 32), (128, 64, 32), (256, 128, 32)],
@@ -53,7 +26,6 @@ GRIDS = {
         "weight_decay": [1e-6],
     },
     "anomal_e": {
-        # hidden=128 OOMs on full graph (~117k train edges) on CPU; keep 64 for reliability
         "hidden": [64],
         "n_layers": [1, 2],
         "lr": [1e-3],
@@ -71,11 +43,9 @@ def _grid(space: dict):
 
 
 def _empty_like(ds):
-    """A zero-row Dataset (used as the absent test split during GNN tuning)."""
     return replace(ds, X=ds.X[:0], y_bin=ds.y_bin[:0], y_multi=ds.y_multi[:0], ids=ds.ids[:0])
 
 
-# --- per-model validation scores -------------------------------------------
 def _val_scores_deep_svdd(params, train, val, seed):
     from .detectors.deepsvdd import DeepSVDD
     det = DeepSVDD(seed=seed, **params).fit(train.X)
@@ -96,7 +66,6 @@ SCORERS = {
 
 
 def _score_validation(scores: np.ndarray, val) -> dict:
-    """Threshold-independent and operating-point validation metrics for one config."""
     thr = pick_threshold(scores, val.y_bin, strategy="recall_first")
     res = evaluate(scores, val.y_bin, val.y_multi, thr)
     return {
@@ -113,16 +82,6 @@ def _score_validation(scores: np.ndarray, val) -> dict:
     }
 
 
-def _aggregate(metric_dicts: list[dict]) -> dict:
-    """Mean + std across seeds for a list of ``_score_validation`` dicts."""
-    out = {}
-    for k in metric_dicts[0]:
-        vals = np.array([float(m[k]) for m in metric_dicts], dtype=float)
-        out[f"{k}_mean"] = float(np.nanmean(vals))
-        out[f"{k}_std"] = float(np.nanstd(vals))
-    return out
-
-
 def tune(models, feature_set, scaler_name, seeds=(0, 1, 2), quick=None,
          selection_metric="val_auc"):
     unknown = [m for m in models if m not in GRIDS]
@@ -134,10 +93,6 @@ def tune(models, feature_set, scaler_name, seeds=(0, 1, 2), quick=None,
     if quick:
         ds = subsample(ds, quick, seed=seeds[0])
 
-    # Pre-build the (zero-variance-dropped, scaled) train/val splits for EACH seed
-    # once, so every config is scored on identical per-seed data. Each seed uses its
-    # own split + own train-fit scaler (same policy as run_phase2), so the averaged
-    # score reflects real seed-to-seed variability, not one lucky split.
     prepared = {}
     for seed in seeds:
         train, val, _test = stratified_split(ds, seed=seed)
@@ -150,8 +105,6 @@ def tune(models, feature_set, scaler_name, seeds=(0, 1, 2), quick=None,
           f"(train~{n_tr}, val~{n_va}); seeds={seeds}; "
           f"selection = mean {selection_metric} across {len(seeds)} seeds\n")
 
-    # Merge into any existing best_params so tuning ONE model does not clobber the
-    # tuned params of the others (run_phase2 reads them all from this file).
     tag = f"{feature_set}_{scaler_name}"
     best_path = C.RESULTS_DIR / f"best_params_{tag}.json"
     best_params = json.loads(best_path.read_text()) if best_path.exists() else {}
@@ -169,11 +122,11 @@ def tune(models, feature_set, scaler_name, seeds=(0, 1, 2), quick=None,
                     train, val = prepared[seed]
                     scores = SCORERS[name](cfg, train, val, seed)
                     per_seed.append(_score_validation(scores, val))
-            except Exception as e:  # keep the sweep going if one config fails
+            except Exception as e:
                 print(f"   {cfg} -> FAILED ({e})")
                 continue
             dt = time.time() - t0
-            agg = _aggregate(per_seed)
+            agg = aggregate_results(per_seed)
             rows.append({"model": name, "sec": round(dt, 1), "n_seeds": len(seeds), **agg, **cfg})
             score = agg[f"{selection_metric}_mean"]
             marker = ""
@@ -187,7 +140,6 @@ def tune(models, feature_set, scaler_name, seeds=(0, 1, 2), quick=None,
             raise RuntimeError(f"All tuning configs failed for {name}")
         best_params[name] = best
         print(f"   BEST {name}: {best}  (mean {selection_metric}={best_score:.4f})\n")
-        # checkpoint after each model so OOM/kill doesn't lose completed sweeps
         C.ensure_dirs()
         with open(best_path, "w") as f:
             json.dump(best_params, f, indent=2)

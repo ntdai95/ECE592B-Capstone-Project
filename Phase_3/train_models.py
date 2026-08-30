@@ -1,24 +1,3 @@
-"""Train the five binary Phase 3 flow-level classifiers.
-
-Random Forest, binary XGBoost, Linear SVM, MLP, and a soft-voting ensemble of
-the strongest three. The multiclass XGBoost lives in multiclass_xgboost.py. Every
-model is scored through the shared operating-point rule in evaluation.py, so no
-model can grade itself on a different threshold, and results accumulate into one
-results.json keyed by model name.
-
-Order matters: the ensemble reads the fitted base models off disk, so `--models
-all` runs them in dependency order.
-
-    python Phase_3/train_models.py --models all
-    python Phase_3/train_models.py --models rf xgb
-    python Phase_3/train_models.py --drop-anomaly
-
---drop-anomaly retrains the same models with the three Task 3.1 columns removed
-and nothing else changed, saving under "<model>__no_anomaly" keys so the
-contribution of stage one is measured per model. The joblib filenames are
-suffixed too, so an ablation run cannot overwrite the models the leaderboard and
-the audits read.
-"""
 import argparse
 import json
 
@@ -50,11 +29,6 @@ def model_path(stem):
 
 
 def drop_anomaly_columns(d):
-    """Return the splits with the three Task 3.1 columns removed.
-
-    Column order in splits.npz matches prep_meta.json["features"], so the
-    indices are taken from there rather than assumed.
-    """
     features = json.loads(open(f"{OUT}/prep_meta.json").read())["features"]
     keep = [i for i, c in enumerate(features) if c not in ANOMALY_COLS]
     dropped = [c for c in features if c in ANOMALY_COLS]
@@ -66,9 +40,6 @@ def drop_anomaly_columns(d):
 
 
 def val_halves(d, seed=1):
-    """Split validation into a fitting half and a threshold half. The SVM
-    calibrator fits on the first half; the threshold is read off the second, so
-    it is not measured on scores the calibrator has already seen."""
     idx = np.arange(len(d["y_va"]))
     return train_test_split(idx, test_size=0.5, random_state=seed,
                             stratify=d["t_va"])
@@ -105,11 +76,6 @@ def train_xgb(d):
 
 
 def train_svm(d):
-    """Light C sweep, then Platt-style sigmoid calibration of decision_function.
-
-    The C sweep and the calibrator both fit on the first validation half; the
-    threshold is read off the second, which neither has seen.
-    """
     fit_i, thr_i = val_halves(d)
     Xf, yf = d["X_va"][fit_i], d["y_va"][fit_i]
     best, best_ap = None, -1
@@ -155,7 +121,6 @@ def train_mlp(d):
 
 
 def base_model_scores(d):
-    """Attack probabilities of the three strongest base models (RF, XGB, MLP)."""
     rf = joblib.load(model_path("model_rf"))
     xgb = joblib.load(model_path("model_xgb"))
     mlp = joblib.load(model_path("model_mlp"))
@@ -170,8 +135,6 @@ def base_model_scores(d):
 
 
 def train_ensemble(d):
-    """Soft voting: average the attack probabilities of RF, XGB and MLP. It fits
-    nothing on validation, so it keeps the whole validation set for thresholding."""
     with Timer() as t:
         P_va, P_te = base_model_scores(d)
     va_vote, te_vote = P_va.mean(axis=1), P_te.mean(axis=1)

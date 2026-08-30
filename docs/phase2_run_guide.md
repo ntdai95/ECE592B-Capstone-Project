@@ -113,8 +113,10 @@ Written to `results/` (all gitignored):
 
 A full all-models run produces **13 figures** (4 × 3 models + 1 UMAP).
 Console output prints each model's AUC/PR-AUC and both operating points, then the
-mean ± std summary. Representative full-data numbers: Anomal-E ≈ 0.85 AUC,
-Deep SVDD ≈ 0.74, fusion ≈ 0.79.
+mean ± std summary. Representative full-data numbers from a full re-run against a
+freshly downloaded copy of the dataset (30 Aug 2026, 5 seeds): Anomal-E ≈ 0.64 AUC,
+Deep SVDD ≈ 0.68, fusion ≈ 0.70. These move with the specific dataset download and
+random sample drawn — see the top-level README's reproducibility notes.
 
 ---
 

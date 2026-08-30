@@ -1,15 +1,3 @@
-"""Deep SVDD: one-class deep anomaly detection (Ruff et al., 2018).
-
-Learns an encoder that pulls normal traffic into a tight hypersphere around a
-fixed center c; the anomaly score is the squared distance to c. Bias-free linear
-layers and unbounded activations avoid the trivial hypersphere-collapse solution,
-and c is fixed from an initial forward pass rather than learned.
-
-The encoder is optionally warm-started as an autoencoder before c is fixed.
-Without it, c comes from a randomly initialised encoder and a bad seed can
-collapse the run (one seed dropped to AUC ~0.45 against ~0.75). Set
-pretrain_epochs=0 to recover the random-init behaviour.
-"""
 from __future__ import annotations
 
 import numpy as np
@@ -40,10 +28,9 @@ class DeepSVDD(BaseDetector):
         self.seed = seed
         self.verbose = verbose
         self.net = None
-        self.c = None  # hypersphere center
+        self.c = None
 
     def _build(self, in_dim: int):
-        """Encoder phi: bias-free Linear + LeakyReLU stack (unbounded activations)."""
         import torch.nn as nn
 
         layers = []
@@ -55,11 +42,6 @@ class DeepSVDD(BaseDetector):
         return nn.Sequential(*layers)
 
     def _build_decoder(self, in_dim: int):
-        """Mirror decoder used only for AE pretraining (discarded afterwards).
-
-        Maps the embedding (dim = hidden_dims[-1]) back up through the reversed
-        hidden widths to the input dimension.
-        """
         import torch.nn as nn
 
         rev = list(reversed(self.hidden_dims))
@@ -72,7 +54,6 @@ class DeepSVDD(BaseDetector):
         return nn.Sequential(*layers)
 
     def _pretrain(self, ae, loader, Xt):
-        """Train encoder+decoder on reconstruction (MSE) to warm-start the encoder."""
         import torch
 
         mse = torch.nn.MSELoss()
@@ -101,21 +82,18 @@ class DeepSVDD(BaseDetector):
         loader = DataLoader(TensorDataset(Xt), batch_size=self.batch_size, shuffle=True)
         self.net = self._build(X.shape[1])
 
-        # AE pretraining warm-starts the encoder; the decoder is discarded.
         if self.pretrain_epochs > 0:
             decoder = self._build_decoder(X.shape[1])
             ae = torch.nn.Sequential(self.net, decoder)
             self._pretrain(ae, loader, Xt)
 
-        # Fix the center c from a forward pass of the pretrained encoder.
         self.net.eval()
         with torch.no_grad():
             reps = self.net(Xt)
             c = reps.mean(dim=0)
-            c[(abs(c) < 1e-6)] = 1e-6  # keep near-zero dims off the origin
+            c[(abs(c) < 1e-6)] = 1e-6
         self.c = c
 
-        # Deep SVDD objective: pull normal points toward c.
         opt = torch.optim.Adam(self.net.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.net.train()
         for ep in range(self.epochs):

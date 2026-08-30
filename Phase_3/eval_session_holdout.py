@@ -1,20 +1,3 @@
-"""Capture-session held-out evaluation: the honesty check on the Phase 3 numbers.
-
-Benign and each attack class were recorded on different capture days, so a random
-split lets a model score by recognising the capture session rather than the
-attack. This re-splits along capture day and compares against the random split,
-holding everything else fixed. Four conditions isolate which side matters:
-
-    C3  benign random,  attacks random   reference (what the leaderboard does)
-    C1  benign BY DAY,  attacks random   benign session shift only
-    C2  benign random,  attacks BY DAY   attack session shift only
-    C0  benign BY DAY,  attacks BY DAY   both, the honest generalisation test
-
-XSS is excluded (effectively a single capture day).
-
-    python Phase_3/eval_session_holdout.py                  -> session_holdout_results.json
-    python Phase_3/eval_session_holdout.py --features base  -> session_holdout_base_results.json (drops ctx_*)
-"""
 import argparse
 import json
 from pathlib import Path
@@ -87,10 +70,6 @@ def build_masks(lab, day, benign_mode, attack_mode, rng):
 
 
 def run_condition(tag, X, lab, tr, te):
-    """Train XGBoost on tr, evaluate on te; imputation and threshold both come
-    from tr only (never te, which would be an oracle threshold). The achieved test
-    FPR is recorded next to recall, since under a session-disjoint split a
-    threshold calibrated on the training day need not hold its budget on test."""
     tr_idx = np.where(tr)[0]
     lab_tr = lab[tr]
     fit_i, thr_i = train_test_split(
