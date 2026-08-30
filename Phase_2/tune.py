@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import argparse
 import itertools
 import json
@@ -36,7 +34,7 @@ GRIDS = {
 DEFAULT_MODELS = ["anomal_e", "deep_svdd"]
 
 
-def _grid(space: dict):
+def _grid(space):
     keys = list(space)
     for combo in itertools.product(*[space[k] for k in keys]):
         yield dict(zip(keys, combo))
@@ -65,7 +63,7 @@ SCORERS = {
 }
 
 
-def _score_validation(scores: np.ndarray, val) -> dict:
+def _score_validation(scores, val):
     thr = pick_threshold(scores, val.y_bin, strategy="recall_first")
     res = evaluate(scores, val.y_bin, val.y_multi, thr)
     return {

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import numpy as np
@@ -26,9 +24,9 @@ class EvalResult:
     auc_roc: float
     pr_auc: float
     confusion: np.ndarray
-    per_attack_dr: dict[str, float]
+    per_attack_dr: dict
 
-    def summary_row(self) -> dict:
+    def summary_row(self):
         row = {
             "threshold": self.threshold,
             "precision": self.precision,
@@ -44,13 +42,8 @@ class EvalResult:
         return row
 
 
-def pick_threshold(
-    scores: np.ndarray,
-    y_bin: np.ndarray,
-    target_recall: float = C.TARGET_RECALL,
-    max_fpr: float = C.MAX_FPR,
-    strategy: str = "recall_first",
-) -> float:
+def pick_threshold(scores, y_bin, target_recall=C.TARGET_RECALL, max_fpr=C.MAX_FPR,
+                   strategy="recall_first"):
     fpr, tpr, thr = roc_curve(y_bin, scores)
     fpr, tpr, thr = fpr[1:], tpr[1:], thr[1:]
 
@@ -74,12 +67,7 @@ def pick_threshold(
     raise ValueError(f"Unknown strategy {strategy!r}")
 
 
-def evaluate(
-    scores: np.ndarray,
-    y_bin: np.ndarray,
-    y_multi: np.ndarray,
-    threshold: float,
-) -> EvalResult:
+def evaluate(scores, y_bin, y_multi, threshold):
     y_pred = (scores >= threshold).astype(np.int64)
 
     prec, rec, f1, _ = precision_recall_fscore_support(
@@ -114,7 +102,7 @@ def evaluate(
     )
 
 
-def aggregate_results(results: list[dict]) -> dict:
+def aggregate_results(results):
     keys = [k for k in results[0] if isinstance(results[0][k], (int, float))]
     agg = {}
     for k in keys:

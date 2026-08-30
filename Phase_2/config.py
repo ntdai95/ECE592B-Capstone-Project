@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +27,6 @@ MAX_FPR = 0.05
 CONTAMINATION = 0.03
 
 
-def ensure_dirs() -> None:
+def ensure_dirs():
     for d in (RESULTS_DIR, FIG_DIR, MODEL_DIR):
         d.mkdir(parents=True, exist_ok=True)
