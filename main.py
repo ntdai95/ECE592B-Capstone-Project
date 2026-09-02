@@ -18,8 +18,8 @@ STAGES = [
      "data/processed_data/packet-data/phase2_autoencoder_alert_rows_for_phase3.csv"),
 
     (2, "Phase 2  packet detectors (Deep SVDD / Anomal-E / fusion)",
-     [PY, "-m", "Phase_2.run_phase2", "--feature-set", "normalized", "--models", "all"],
-     "results/results_normalized.csv"),
+     [PY, "-m", "Phase_2.run_phase2", "--feature-set", "normalized", "--models", "all", "--scaler", "quantile"],
+     "results/results_normalized_quantile.csv"),
 
     (3, "Phase 3.2  flow feature engineering + unified dataset",
      [PY, "Phase_3/flow_based_feature_engineering.py"],
