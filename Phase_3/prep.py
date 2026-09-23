@@ -1,16 +1,19 @@
 import json
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from pathlib import Path
 
 from evaluation import FLOW_DATA_DIR, OUT
 SEED = 1
+OUTLIER_CONTAMINATION = 0.05
 
 
 def load_flow_data():
-    df = pd.read_csv(FLOW_DATA_DIR / "normalized_original_data.csv")
+    df = pd.read_csv(FLOW_DATA_DIR / "original_data.csv")
     df.columns = [c.strip() for c in df.columns]
     return df
 
@@ -64,20 +67,40 @@ def split(X, y, y_type, seed=SEED):
     return tr, va, te
 
 
-def impute_from_train(X, tr):
+def preprocess_from_train(X, tr, flow_features):
+    """Fit every data-dependent preprocessing step on training rows only."""
     med = X.iloc[tr].median(numeric_only=True)
     med = med.fillna(0.0)
-    return X.fillna(med).astype(np.float32), med
+    clean = X.fillna(med).astype(np.float32).copy()
+
+    # This fixed element-wise transform has no fitted state. It matches the
+    # transform used by the original flow feature pipeline.
+    clean.loc[:, flow_features] = np.log1p(clean[flow_features].clip(lower=0))
+
+    detector = IsolationForest(
+        contamination=OUTLIER_CONTAMINATION,
+        random_state=42,
+        n_jobs=1,
+    )
+    inlier = detector.fit_predict(clean.iloc[tr][flow_features]) == 1
+    clean_tr = np.asarray(tr)[inlier]
+
+    scaler = StandardScaler()
+    scaler.fit(clean.iloc[clean_tr][flow_features])
+    clean.loc[:, flow_features] = scaler.transform(clean[flow_features])
+    return clean.astype(np.float32), clean_tr, med, int((~inlier).sum())
 
 
 def main():
     df = load_flow_data()
+    flow_features = [c for c in df.columns if c not in ["Flow ID", "label"]]
     df = merge_anomaly_scores(df)
     df = merge_context_features(df)
     df = merge_capture_metadata(df)
     X, y, y_type, cols, cap_day = make_features_and_target(df)
     tr, va, te = split(X, y, y_type)
-    X, med = impute_from_train(X, tr)
+    train_before_outliers = len(tr)
+    X, tr, med, outliers_removed = preprocess_from_train(X, tr, flow_features)
     Xv = X.values
     np.savez_compressed(
         f"{OUT}/splits.npz",
@@ -93,7 +116,15 @@ def main():
         "train_attack": int(y[tr].sum()), "val_attack": int(y[va].sum()),
         "test_attack": int(y[te].sum()), "seed": SEED,
         "anomaly_score_coverage": float((X["has_anomaly_score"] == 1).mean()),
-        "imputation": "median fitted on training split only",
+        "preprocessing": {
+            "order": "split, train-median imputation, log1p, train-only outlier removal, train-only scaling",
+            "imputation": "feature medians fitted on training split only; no label use",
+            "outliers": "IsolationForest fitted without labels on training split; only training outliers removed",
+            "outlier_contamination": OUTLIER_CONTAMINATION,
+            "train_before_outliers": int(train_before_outliers),
+            "train_outliers_removed": outliers_removed,
+            "scaling": "StandardScaler fitted on retained training rows only",
+        },
         "context_features": int(sum(c.startswith("ctx_") for c in cols)),
         "context_note": ("causal per-source/per-destination connection-window "
                          "statistics over the full 886,621-flow capture; "

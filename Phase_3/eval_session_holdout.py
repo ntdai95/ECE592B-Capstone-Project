@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 from sklearn.model_selection import train_test_split
 
 from evaluation import FLOW_DATA_DIR, FPR_BUDGET, OUT, thr_max_recall
+from prep import preprocess_from_train
 
 SEED = 1
 
@@ -26,8 +27,9 @@ XGB_KW = dict(n_estimators=400, max_depth=8, learning_rate=0.1, subsample=0.8,
 
 def load_frame(drop_context=False):
     meta = json.load(open(f"{OUT}/prep_meta.json"))
-    df = pd.read_csv(FLOW_DATA_DIR / "normalized_original_data.csv")
+    df = pd.read_csv(FLOW_DATA_DIR / "original_data.csv")
     df.columns = [c.strip() for c in df.columns]
+    flow_features = [c for c in df.columns if c not in ["Flow ID", "label"]]
     ids = pd.read_csv(FLOW_DATA_DIR / "flow_data_ids.csv")
     ids.columns = [c.strip() for c in ids.columns]
     ids = ids.drop_duplicates(subset="Flow ID", keep="first")
@@ -48,7 +50,7 @@ def load_frame(drop_context=False):
         print(f"dropping {len(feat) - len(keep)} context features -> {len(keep)} base features")
         feat = keep
     X = df[feat].replace([np.inf, -np.inf], np.nan)
-    return X, df["label"].astype(str).values, day, feat
+    return X, df["label"].astype(str).values, day, feat, flow_features
 
 
 def build_masks(lab, day, benign_mode, attack_mode, rng):
@@ -69,7 +71,7 @@ def build_masks(lab, day, benign_mode, attack_mode, rng):
     return tr, te
 
 
-def run_condition(tag, X, lab, tr, te):
+def run_condition(tag, X, lab, tr, te, flow_features):
     tr_idx = np.where(tr)[0]
     lab_tr = lab[tr]
     fit_i, thr_i = train_test_split(
@@ -77,10 +79,12 @@ def run_condition(tag, X, lab, tr, te):
         stratify=lab_tr if len(set(lab_tr)) > 1 else None)
     fit_rows, thr_rows = tr_idx[fit_i], tr_idx[thr_i]
 
-    med = X.iloc[fit_rows].median(numeric_only=True).fillna(0.0)
-    Xfit = X.iloc[fit_rows].fillna(med).astype(np.float32).values
-    Xthr = X.iloc[thr_rows].fillna(med).astype(np.float32).values
-    Xte = X.iloc[te].fillna(med).astype(np.float32).values
+    train_before_outliers = len(fit_rows)
+    X, fit_rows, _, outliers_removed = preprocess_from_train(
+        X, fit_rows, [c for c in flow_features if c in X.columns])
+    Xfit = X.iloc[fit_rows].values
+    Xthr = X.iloc[thr_rows].values
+    Xte = X.iloc[te].values
     yfit = (lab[fit_rows] != "benign").astype(int)
     ythr = (lab[thr_rows] != "benign").astype(int)
     yte = (lab[te] != "benign").astype(int)
@@ -93,6 +97,12 @@ def run_condition(tag, X, lab, tr, te):
     thr = thr_max_recall(ythr, s_thr, FPR_BUDGET)
     pred = (s >= thr).astype(int)
     achieved_fpr = float(pred[yte == 0].mean())
+    tp = int(((pred == 1) & (yte == 1)).sum())
+    fp = int(((pred == 1) & (yte == 0)).sum())
+    fn = int(((pred == 0) & (yte == 1)).sum())
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
     tte = lab[te]
     attacks = sorted(set(tte) - {"benign"})
@@ -108,10 +118,14 @@ def run_condition(tag, X, lab, tr, te):
         "condition": tag,
         "n_train": int(len(fit_rows)), "n_threshold": int(len(thr_rows)),
         "n_test": int(te.sum()),
+        "n_train_before_outliers": int(train_before_outliers),
+        "train_outliers_removed": outliers_removed,
         "threshold_source": "held-out 20% of train",
         "pr_auc": round(float(average_precision_score(yte, s)), 4),
         "roc_auc": round(float(roc_auc_score(yte, s)), 4),
-        "recall_at_budget": round(float(pred[yte == 1].mean()), 4),
+        "precision_at_budget": round(precision, 4),
+        "recall_at_budget": round(recall, 4),
+        "f1_at_budget": round(f1, 4),
         "achieved_test_fpr": round(achieved_fpr, 4),
         "fpr_budget": FPR_BUDGET,
         "per_attack_detection": det,
@@ -133,7 +147,7 @@ def main():
     args = ap.parse_args()
     base = args.features == "base"
 
-    X, lab, day, feat = load_frame(drop_context=base)
+    X, lab, day, feat, flow_features = load_frame(drop_context=base)
     print(f"features={len(feat)}  rows={len(lab)}  (xss excluded: single capture day)")
     print("\ncapture-day plan (train -> test):")
     for c, (a, b) in DAY_PLAN.items():
@@ -149,7 +163,7 @@ def main():
         ("C0 benign=DAY, attacks=DAY  (honest generalisation)", "day", "day"),
     ]:
         tr, te = build_masks(lab, day, bmode, amode, rng)
-        results.append(run_condition(tag, X, lab, tr, te))
+        results.append(run_condition(tag, X, lab, tr, te, flow_features))
 
     out = {"day_plan": DAY_PLAN, "excluded": ["xss"], "conditions": results}
     if base:
