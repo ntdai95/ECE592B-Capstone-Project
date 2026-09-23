@@ -19,19 +19,31 @@ python main.py --phase 3        # run one phase in isolation
 
 ## Headline result
 
-Multiclass XGBoost, held-out test set, threshold tuned on validation for
-FPR <= 1%. The clean result fits imputation, label-free outlier handling, and
-scaling on the training split only:
+All six models have now been regenerated on the same held-out test set through
+the corrected split-first pipeline. Imputation, label-free outlier handling,
+and scaling are fitted on training rows only; each threshold is tuned on the
+validation set for FPR <= 1%. Historical columns are the invalid pre-fix values
+and are retained only to make the effect of the correction explicit:
 
-| Pipeline | Precision | Recall | F1 | FPR | PR-AUC |
-|---|---:|---:|---:|---:|---:|
-| **Clean (current)** | **0.7508** | **0.9867** | **0.8527** | **0.98%** | **0.9880** |
-| Contaminated (historical; do not cite) | 0.7918 | 0.9958 | 0.8822 | 0.82% | 0.9947 |
+| Model (clean recall rank) | Clean precision | Old precision | Clean recall | Old recall | Clean F1 | Old F1 | Clean FPR | Old FPR | Clean PR-AUC | Old PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **1. Binary XGBoost** | **0.7610** | 0.7849 | **0.9950** | 0.9949 | **0.8624** | 0.8775 | **0.94%** | 0.85% | **0.9893** | 0.9957 |
+| 2. Multiclass XGBoost | 0.7508 | 0.7918 | 0.9867 | 0.9958 | 0.8527 | 0.8822 | 0.98% | 0.82% | 0.9880 | 0.9947 |
+| 3. Soft Voting (RF+XGB+MLP) | 0.7732 | 0.7870 | 0.9858 | 0.9924 | 0.8667 | 0.8779 | 0.87% | 0.84% | 0.9842 | 0.9947 |
+| 4. Random Forest | 0.7574 | 0.7754 | 0.9833 | 0.9941 | 0.8557 | 0.8713 | 0.94% | 0.90% | 0.9826 | 0.9929 |
+| 5. Neural Network (MLP) | 0.7615 | 0.7879 | 0.8942 | 0.9630 | 0.8225 | 0.8667 | 0.84% | 0.81% | 0.8825 | 0.9681 |
+| 6. Linear SVM | 0.6204 | 0.6783 | 0.4617 | 0.5059 | 0.5294 | 0.5796 | 0.85% | 0.75% | 0.5824 | 0.6622 |
 
-The former headline was invalid because imputation and outlier removal used the
-label before splitting, and scaling was fit on the full dataset. The clean run
-splits first. The other five model rows from the old table have not been
-regenerated and are intentionally omitted.
+The former results were invalid because imputation and outlier removal used the
+label before splitting, and scaling was fit on the full dataset. Four of the six
+clean models exceed 90% recall, and all six held-out FPRs remain below 1%.
+
+**The selection changed.** The contaminated recall ordering was Multiclass
+XGBoost > binary XGBoost > Random Forest > Soft Voting > MLP > Linear SVM. The
+clean ordering is binary XGBoost > Multiclass XGBoost > Soft Voting > Random
+Forest > MLP > Linear SVM. Under the stated highest-recall selection rule,
+binary XGBoost now leads multiclass XGBoost by 0.83 percentage points, so the
+old claim that multiclass XGBoost was the selected model is no longer valid.
 
 The six models are: the multiclass XGBoost signature detector
 (`multiclass_xgboost.py`), and five binary classifiers (`train_models.py`) — Random Forest, binary XGBoost,
@@ -137,11 +149,11 @@ test rather than only on the validation sample it was tuned on.
 autoencoder's alerts with stage 2 and calls an item an attack only if stage 1
 alerts it *and* stage 2 confirms it, then reports overall accuracy, precision,
 recall and the false-positive reduction versus Phase 2. Stage 2 is the
-leaderboard's highest-recall model, selected automatically (currently
-Multiclass XGBoost). Crucially, the alert flows are normalised **once**, in
-`flow_based_feature_engineering.py`, with the same fitted scaler as the training
-data, so every model scores them in its exact training feature space — nothing is
-re-scaled downstream.
+leaderboard's highest-recall model, selected automatically (now binary
+XGBoost). The saved cascade result predates this completed six-model rerun,
+still names multiclass XGBoost, and has not been regenerated under the
+split-first preprocessing protocol. It is not part of the clean six-model table
+and must not be cited as a current clean result.
 
 ---
 

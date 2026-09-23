@@ -49,7 +49,7 @@ def train_rf(d):
     model = RandomForestClassifier(
         n_estimators=200, max_depth=None, max_features=0.3,
         min_samples_split=2, min_samples_leaf=2,
-        class_weight="balanced", bootstrap=True, n_jobs=-1, random_state=1,
+        class_weight="balanced", bootstrap=True, n_jobs=1, random_state=1,
     )
     with Timer() as t:
         model.fit(d["X_tr"], d["y_tr"])
@@ -65,7 +65,7 @@ def train_xgb(d):
         n_estimators=400, max_depth=8, learning_rate=0.1,
         subsample=0.8, colsample_bytree=0.8, min_child_weight=1,
         reg_lambda=1.0, scale_pos_weight=spw, tree_method="hist",
-        eval_metric="aucpr", n_jobs=-1, random_state=1,
+        eval_metric="aucpr", n_jobs=1, random_state=1,
     )
     with Timer() as t:
         model.fit(d["X_tr"], d["y_tr"])

@@ -129,7 +129,16 @@ def detection_vs_budget(t_te, y_te, te_score, y_va, va_score,
 
 
 def evaluate_and_save(name, y_va, va_score, y_te, te_score, t_te, train_time):
-    res = {"model": name, "train_time_sec": round(train_time, 1), "fpr_budget": FPR_BUDGET}
+    res = {
+        "model": name,
+        "result_status": "clean_split_first",
+        "preprocessing_protocol": (
+            "split first; imputation, label-free outlier detection, and scaling "
+            "fitted on training rows only"
+        ),
+        "train_time_sec": round(train_time, 1),
+        "fpr_budget": FPR_BUDGET,
+    }
 
     res["test_default"] = metrics(y_te, (te_score >= 0.5).astype(int), te_score)
     res["per_attack_default"] = per_attack(t_te, (te_score >= 0.5).astype(int))
