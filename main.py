@@ -23,7 +23,7 @@ STAGES = [
 
     (3, "Phase 3.2  flow feature engineering + unified dataset",
      [PY, "Phase_3/flow_based_feature_engineering.py"],
-     "data/processed_data/flow-data/normalized_original_data.csv"),
+     "data/processed_data/flow-data/original_data.csv"),
 
     (3, "Phase 3.1  flow-level anomaly scores",
      [PY, "Phase_3/flow_anomaly_detection.py"],

@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from sklearn.ensemble import IsolationForest
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
@@ -130,33 +129,6 @@ def subsample_by_label(flow_df, n_benign=200_000, n_attack=1200, random_state=RA
     print(f"Number of Samples from each Label:\n{sampled_df['label'].value_counts()}")
     return sampled_df
 
-def impute_missing_feature_values(flow_df):
-    for column_name in flow_df.columns:
-        if column_name not in ["Flow ID", "label"]:
-            flow_df[column_name] = flow_df[column_name].replace([np.inf, -np.inf], np.nan)
-            flow_df[column_name] = flow_df.groupby("label")[column_name].transform(lambda x: x.fillna(x.mean()))
-
-    return flow_df
-
-def remove_outliers_per_label(flow_df, contamination_benign=0.05, contamination_attack=0.01):
-    normal_rows = []
-    feature_columns = []
-    for column_name in flow_df.columns:
-        if column_name not in ["Flow ID", "label"]:
-            feature_columns.append(column_name)
-
-    for label in flow_df["label"].unique():
-        flow_by_label_df = flow_df[flow_df["label"] == label]
-        if label == "benign":
-            isolation_forest = IsolationForest(contamination=contamination_benign, random_state=RANDOM_STATE)
-        else:
-            isolation_forest = IsolationForest(contamination=contamination_attack, random_state=RANDOM_STATE)
-
-        prediction = isolation_forest.fit_predict(flow_by_label_df[feature_columns])
-        normal_rows.append(flow_by_label_df[prediction == 1])
-
-    return pd.concat(normal_rows, ignore_index=True)
-
 def log_transform_skewed(X):
     X = X.copy()
     X[X.columns] = np.log1p(X[X.columns].clip(lower=0))
@@ -190,33 +162,11 @@ def main():
     aggregated_flows_df = build_aggregated_flows()
 
     flow_df = subsample_by_label(aggregated_flows_df)
-    flow_df = impute_missing_feature_values(flow_df)
-    feature_columns = [c for c in flow_df.columns if c not in ["Flow ID", "label"]]
-    fill_means = flow_df[feature_columns].mean()
-    flow_df[feature_columns] = log_transform_skewed(flow_df[feature_columns])
-    flow_df = remove_outliers_per_label(flow_df)
-    flow_ids = flow_df["Flow ID"].values
-    X = flow_df[feature_columns]
-    y = flow_df["label"]
-
-    scaler = normalization().fit(X)
-    full_ds = pd.DataFrame(scaler.transform(X), columns=feature_columns)
-    full_ds["Flow ID"] = flow_ids
-    full_ds["label"] = y.values
-    full_ds.to_csv(OUTPUT_DIR / "normalized_original_data.csv", index=False)
-
-    pca_pipeline = PCA_reduction()
-    pca_arr = pca_pipeline.fit_transform(X)
-    pca_ds = pd.DataFrame(pca_arr, columns=[f"PC{i+1}" for i in range(pca_arr.shape[1])])
-    pca_ds["Flow ID"] = flow_ids
-    pca_ds["label"] = y.values
-    pca_ds.to_csv(OUTPUT_DIR / "pca_data.csv", index=False)
-    pca_contribution(pca_pipeline.named_steps["pca"], X)
-
-    phase2_alert_ids = pd.read_csv(PHASE2_ALERTS_FILE, usecols=["id"])["id"]
-    alerted = load_packet_identifiers(packet_ids=phase2_alert_ids)
-    alert_flows = locate_corresponding_flows(alerted, aggregated_flows_df)
-    normalize_alert_flows(alert_flows, feature_columns, fill_means, scaler)
+    # Do not fit any data-dependent preprocessing here.  prep.py owns the
+    # train/validation/test split and fits imputation, outlier detection, and
+    # scaling on its training partition only.
+    flow_df.to_csv(OUTPUT_DIR / "original_data.csv", index=False)
+    print(f"Saved {len(flow_df):,} unprocessed sampled flows for split-first preprocessing")
 
 
 if __name__ == "__main__":
