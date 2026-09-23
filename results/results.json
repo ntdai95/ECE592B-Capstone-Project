@@ -1,0 +1,1896 @@
+{
+  "phase2_kmeans": {
+    "stage": "phase2_packet",
+    "detector": "kmeans",
+    "params": {
+      "k": 80,
+      "threshold_percentile": 90
+    },
+    "threshold_rule": "",
+    "selection_rule": "",
+    "test": {
+      "precision": 0.2215,
+      "recall": 0.8973,
+      "f1": 0.3553,
+      "fpr": 0.0986,
+      "fnr": 0.1027,
+      "roc_auc": 0.9646,
+      "pr_auc": 0.6689,
+      "tn": 34253,
+      "fp": 3747,
+      "fn": 122,
+      "tp": 1066,
+      "alerts": 4813
+    },
+    "per_attack_detection": {
+      "brute_force": 97.9,
+      "ddos": 100.0,
+      "dns_spoofing": 61.6,
+      "dos": 100.0,
+      "xss": 89.03
+    }
+  },
+  "phase2_autoencoder": {
+    "stage": "phase2_packet",
+    "detector": "autoencoder",
+    "params": {
+      "bottleneck_size": 16,
+      "threshold_percentile": 90
+    },
+    "threshold_rule": "",
+    "selection_rule": "",
+    "test": {
+      "precision": 0.2335,
+      "recall": 0.9596,
+      "f1": 0.3756,
+      "fpr": 0.0985,
+      "fnr": 0.0404,
+      "roc_auc": 0.9849,
+      "pr_auc": 0.7956,
+      "tn": 34258,
+      "fp": 3742,
+      "fn": 48,
+      "tp": 1140,
+      "alerts": 4882
+    },
+    "per_attack_detection": {
+      "brute_force": 98.74,
+      "ddos": 100.0,
+      "dns_spoofing": 82.28,
+      "dos": 100.0,
+      "xss": 98.73
+    }
+  },
+  "random_forest": {
+    "model": "random_forest",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 92.9,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9959,
+      "precision": 0.9229,
+      "recall": 0.9375,
+      "f1": 0.9301,
+      "fpr": 0.0024,
+      "fnr": 0.0625,
+      "roc_auc": 0.9993,
+      "pr_auc": 0.9826,
+      "tn": 39906,
+      "fp": 94,
+      "fn": 75,
+      "tp": 1125
+    },
+    "per_attack_default": {
+      "benign": 99.77,
+      "brute_force": 93.33,
+      "ddos": 97.5,
+      "dns_spoofing": 88.75,
+      "dos": 94.17,
+      "xss": 95.0
+    },
+    "threshold_max_recall": 0.3045764142928872,
+    "test_tuned": {
+      "accuracy": 0.9903,
+      "precision": 0.7574,
+      "recall": 0.9833,
+      "f1": 0.8557,
+      "fpr": 0.0094,
+      "fnr": 0.0167,
+      "roc_auc": 0.9993,
+      "pr_auc": 0.9826,
+      "tn": 39622,
+      "fp": 378,
+      "fn": 20,
+      "tp": 1180
+    },
+    "per_attack_tuned": {
+      "benign": 99.06,
+      "brute_force": 100.0,
+      "ddos": 99.17,
+      "dns_spoofing": 96.25,
+      "dos": 96.67,
+      "xss": 99.58
+    },
+    "threshold_max_f1": 0.5828422832136144,
+    "test_maxf1": {
+      "accuracy": 0.996,
+      "precision": 0.9559,
+      "recall": 0.9042,
+      "f1": 0.9293,
+      "fpr": 0.0012,
+      "fnr": 0.0958,
+      "roc_auc": 0.9993,
+      "pr_auc": 0.9826,
+      "tn": 39950,
+      "fp": 50,
+      "fn": 115,
+      "tp": 1085
+    },
+    "per_attack_maxf1": {
+      "benign": 99.88,
+      "brute_force": 87.5,
+      "ddos": 97.5,
+      "dns_spoofing": 83.75,
+      "dos": 90.83,
+      "xss": 92.5
+    },
+    "val_default": {
+      "accuracy": 0.9957,
+      "precision": 0.9258,
+      "recall": 0.9258,
+      "f1": 0.9258,
+      "fpr": 0.0022,
+      "fnr": 0.0742,
+      "roc_auc": 0.9989,
+      "pr_auc": 0.9776,
+      "tn": 39911,
+      "fp": 89,
+      "fn": 89,
+      "tp": 1111
+    },
+    "per_class_auc": {
+      "brute_force": 0.9995,
+      "ddos": 0.9997,
+      "dns_spoofing": 0.9987,
+      "dos": 0.9989,
+      "xss": 0.9996
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 83.75,
+        "ddos": 96.67,
+        "dns_spoofing": 80.0,
+        "dos": 87.92,
+        "xss": 90.0,
+        "overall_recall": 87.67,
+        "achieved_test_fpr": 0.065
+      },
+      "0.25%": {
+        "brute_force": 92.5,
+        "ddos": 97.5,
+        "dns_spoofing": 86.25,
+        "dos": 92.92,
+        "xss": 94.58,
+        "overall_recall": 92.75,
+        "achieved_test_fpr": 0.185
+      },
+      "0.5%": {
+        "brute_force": 96.25,
+        "ddos": 97.92,
+        "dns_spoofing": 93.33,
+        "dos": 95.83,
+        "xss": 98.33,
+        "overall_recall": 96.33,
+        "achieved_test_fpr": 0.462
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 99.17,
+        "dns_spoofing": 96.25,
+        "dos": 96.67,
+        "xss": 99.58,
+        "overall_recall": 98.33,
+        "achieved_test_fpr": 0.945
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 99.17,
+        "dns_spoofing": 98.33,
+        "dos": 97.5,
+        "xss": 99.58,
+        "overall_recall": 98.92,
+        "achieved_test_fpr": 1.833
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.58,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 4.575
+      }
+    }
+  },
+  "xgboost": {
+    "model": "xgboost",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 17.5,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9965,
+      "precision": 0.9245,
+      "recall": 0.9592,
+      "f1": 0.9415,
+      "fpr": 0.0024,
+      "fnr": 0.0408,
+      "roc_auc": 0.9996,
+      "pr_auc": 0.9893,
+      "tn": 39906,
+      "fp": 94,
+      "fn": 49,
+      "tp": 1151
+    },
+    "per_attack_default": {
+      "benign": 99.77,
+      "brute_force": 97.92,
+      "ddos": 98.75,
+      "dns_spoofing": 90.42,
+      "dos": 94.58,
+      "xss": 97.92
+    },
+    "threshold_max_recall": 0.023524902761982512,
+    "test_tuned": {
+      "accuracy": 0.9908,
+      "precision": 0.761,
+      "recall": 0.995,
+      "f1": 0.8624,
+      "fpr": 0.0094,
+      "fnr": 0.005,
+      "roc_auc": 0.9996,
+      "pr_auc": 0.9893,
+      "tn": 39625,
+      "fp": 375,
+      "fn": 6,
+      "tp": 1194
+    },
+    "per_attack_tuned": {
+      "benign": 99.06,
+      "brute_force": 100.0,
+      "ddos": 99.58,
+      "dns_spoofing": 98.75,
+      "dos": 99.17,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.7203768491754995,
+    "test_maxf1": {
+      "accuracy": 0.9969,
+      "precision": 0.9452,
+      "recall": 0.9483,
+      "f1": 0.9468,
+      "fpr": 0.0016,
+      "fnr": 0.0517,
+      "roc_auc": 0.9996,
+      "pr_auc": 0.9893,
+      "tn": 39934,
+      "fp": 66,
+      "fn": 62,
+      "tp": 1138
+    },
+    "per_attack_maxf1": {
+      "benign": 99.83,
+      "brute_force": 96.25,
+      "ddos": 98.75,
+      "dns_spoofing": 87.92,
+      "dos": 93.75,
+      "xss": 97.5
+    },
+    "val_default": {
+      "accuracy": 0.9968,
+      "precision": 0.9355,
+      "recall": 0.955,
+      "f1": 0.9452,
+      "fpr": 0.002,
+      "fnr": 0.045,
+      "roc_auc": 0.999,
+      "pr_auc": 0.986,
+      "tn": 39921,
+      "fp": 79,
+      "fn": 54,
+      "tp": 1146
+    },
+    "per_class_auc": {
+      "brute_force": 0.9998,
+      "ddos": 0.9999,
+      "dns_spoofing": 0.9991,
+      "dos": 0.9995,
+      "xss": 0.9998
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 93.33,
+        "ddos": 98.33,
+        "dns_spoofing": 82.92,
+        "dos": 92.08,
+        "xss": 95.0,
+        "overall_recall": 92.33,
+        "achieved_test_fpr": 0.085
+      },
+      "0.25%": {
+        "brute_force": 97.92,
+        "ddos": 98.75,
+        "dns_spoofing": 90.42,
+        "dos": 94.58,
+        "xss": 97.92,
+        "overall_recall": 95.92,
+        "achieved_test_fpr": 0.23
+      },
+      "0.5%": {
+        "brute_force": 99.17,
+        "ddos": 99.17,
+        "dns_spoofing": 96.25,
+        "dos": 97.08,
+        "xss": 98.75,
+        "overall_recall": 98.08,
+        "achieved_test_fpr": 0.468
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 99.58,
+        "dns_spoofing": 98.75,
+        "dos": 99.17,
+        "xss": 100.0,
+        "overall_recall": 99.5,
+        "achieved_test_fpr": 0.938
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.17,
+        "dos": 99.58,
+        "xss": 100.0,
+        "overall_recall": 99.75,
+        "achieved_test_fpr": 1.862
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.58,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 4.623
+      }
+    }
+  },
+  "linear_svm": {
+    "model": "linear_svm",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 55.8,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9709,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0,
+      "fnr": 1.0,
+      "roc_auc": 0.9108,
+      "pr_auc": 0.5824,
+      "tn": 40000,
+      "fp": 0,
+      "fn": 1200,
+      "tp": 0
+    },
+    "per_attack_default": {
+      "benign": 100.0,
+      "brute_force": 0.0,
+      "ddos": 0.0,
+      "dns_spoofing": 0.0,
+      "dos": 0.0,
+      "xss": 0.0
+    },
+    "threshold_max_recall": 0.02980908257478137,
+    "test_tuned": {
+      "accuracy": 0.9761,
+      "precision": 0.6204,
+      "recall": 0.4617,
+      "f1": 0.5294,
+      "fpr": 0.0085,
+      "fnr": 0.5383,
+      "roc_auc": 0.9108,
+      "pr_auc": 0.5824,
+      "tn": 39661,
+      "fp": 339,
+      "fn": 646,
+      "tp": 554
+    },
+    "per_attack_tuned": {
+      "benign": 99.15,
+      "brute_force": 27.5,
+      "ddos": 88.75,
+      "dns_spoofing": 33.33,
+      "dos": 53.75,
+      "xss": 27.5
+    },
+    "threshold_max_f1": 0.029811181834675692,
+    "test_maxf1": {
+      "accuracy": 0.976,
+      "precision": 0.6199,
+      "recall": 0.4525,
+      "f1": 0.5231,
+      "fpr": 0.0083,
+      "fnr": 0.5475,
+      "roc_auc": 0.9108,
+      "pr_auc": 0.5824,
+      "tn": 39667,
+      "fp": 333,
+      "fn": 657,
+      "tp": 543
+    },
+    "per_attack_maxf1": {
+      "benign": 99.17,
+      "brute_force": 26.25,
+      "ddos": 88.33,
+      "dns_spoofing": 33.33,
+      "dos": 52.92,
+      "xss": 25.42
+    },
+    "val_default": {
+      "accuracy": 0.9709,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0,
+      "fnr": 1.0,
+      "roc_auc": 0.8961,
+      "pr_auc": 0.5408,
+      "tn": 20000,
+      "fp": 0,
+      "fn": 600,
+      "tp": 0
+    },
+    "per_class_auc": {
+      "brute_force": 0.957,
+      "ddos": 0.9567,
+      "dns_spoofing": 0.887,
+      "dos": 0.8136,
+      "xss": 0.9396
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 1.67,
+        "ddos": 47.08,
+        "dns_spoofing": 16.67,
+        "dos": 30.0,
+        "xss": 0.83,
+        "overall_recall": 19.25,
+        "achieved_test_fpr": 0.048
+      },
+      "0.25%": {
+        "brute_force": 5.83,
+        "ddos": 72.08,
+        "dns_spoofing": 23.75,
+        "dos": 41.25,
+        "xss": 4.17,
+        "overall_recall": 29.42,
+        "achieved_test_fpr": 0.165
+      },
+      "0.5%": {
+        "brute_force": 13.75,
+        "ddos": 82.92,
+        "dns_spoofing": 28.33,
+        "dos": 47.08,
+        "xss": 8.75,
+        "overall_recall": 36.17,
+        "achieved_test_fpr": 0.407
+      },
+      "1%": {
+        "brute_force": 27.5,
+        "ddos": 88.75,
+        "dns_spoofing": 33.33,
+        "dos": 53.75,
+        "xss": 27.5,
+        "overall_recall": 46.17,
+        "achieved_test_fpr": 0.848
+      },
+      "2%": {
+        "brute_force": 52.08,
+        "ddos": 91.67,
+        "dns_spoofing": 41.25,
+        "dos": 58.33,
+        "xss": 55.83,
+        "overall_recall": 59.83,
+        "achieved_test_fpr": 1.837
+      },
+      "5%": {
+        "brute_force": 88.75,
+        "ddos": 93.33,
+        "dns_spoofing": 60.42,
+        "dos": 62.92,
+        "xss": 87.5,
+        "overall_recall": 78.58,
+        "achieved_test_fpr": 4.707
+      }
+    }
+  },
+  "mlp": {
+    "model": "mlp",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 70.1,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9913,
+      "precision": 0.8445,
+      "recall": 0.86,
+      "f1": 0.8522,
+      "fpr": 0.0048,
+      "fnr": 0.14,
+      "roc_auc": 0.9503,
+      "pr_auc": 0.8825,
+      "tn": 39810,
+      "fp": 190,
+      "fn": 168,
+      "tp": 1032
+    },
+    "per_attack_default": {
+      "benign": 99.52,
+      "brute_force": 90.42,
+      "ddos": 94.17,
+      "dns_spoofing": 76.25,
+      "dos": 81.25,
+      "xss": 87.92
+    },
+    "threshold_max_recall": 0.16991494596104487,
+    "test_tuned": {
+      "accuracy": 0.9888,
+      "precision": 0.7615,
+      "recall": 0.8942,
+      "f1": 0.8225,
+      "fpr": 0.0084,
+      "fnr": 0.1058,
+      "roc_auc": 0.9503,
+      "pr_auc": 0.8825,
+      "tn": 39664,
+      "fp": 336,
+      "fn": 127,
+      "tp": 1073
+    },
+    "per_attack_tuned": {
+      "benign": 99.16,
+      "brute_force": 93.33,
+      "ddos": 95.0,
+      "dns_spoofing": 84.17,
+      "dos": 83.33,
+      "xss": 91.25
+    },
+    "threshold_max_f1": 0.8249135017405019,
+    "test_maxf1": {
+      "accuracy": 0.9915,
+      "precision": 0.8869,
+      "recall": 0.81,
+      "f1": 0.8467,
+      "fpr": 0.0031,
+      "fnr": 0.19,
+      "roc_auc": 0.9503,
+      "pr_auc": 0.8825,
+      "tn": 39876,
+      "fp": 124,
+      "fn": 228,
+      "tp": 972
+    },
+    "per_attack_maxf1": {
+      "benign": 99.69,
+      "brute_force": 84.17,
+      "ddos": 92.92,
+      "dns_spoofing": 66.25,
+      "dos": 79.58,
+      "xss": 82.08
+    },
+    "val_default": {
+      "accuracy": 0.9906,
+      "precision": 0.8406,
+      "recall": 0.835,
+      "f1": 0.8378,
+      "fpr": 0.0048,
+      "fnr": 0.165,
+      "roc_auc": 0.9401,
+      "pr_auc": 0.8642,
+      "tn": 39810,
+      "fp": 190,
+      "fn": 198,
+      "tp": 1002
+    },
+    "per_class_auc": {
+      "brute_force": 0.981,
+      "ddos": 0.9617,
+      "dns_spoofing": 0.9503,
+      "dos": 0.8952,
+      "xss": 0.9632
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 40.0,
+        "ddos": 91.67,
+        "dns_spoofing": 40.42,
+        "dos": 72.08,
+        "xss": 51.25,
+        "overall_recall": 59.08,
+        "achieved_test_fpr": 0.057
+      },
+      "0.25%": {
+        "brute_force": 73.33,
+        "ddos": 92.08,
+        "dns_spoofing": 57.5,
+        "dos": 77.08,
+        "xss": 75.83,
+        "overall_recall": 75.17,
+        "achieved_test_fpr": 0.207
+      },
+      "0.5%": {
+        "brute_force": 88.75,
+        "ddos": 93.75,
+        "dns_spoofing": 73.75,
+        "dos": 81.25,
+        "xss": 86.25,
+        "overall_recall": 84.75,
+        "achieved_test_fpr": 0.427
+      },
+      "1%": {
+        "brute_force": 93.33,
+        "ddos": 95.0,
+        "dns_spoofing": 84.17,
+        "dos": 83.33,
+        "xss": 91.25,
+        "overall_recall": 89.42,
+        "achieved_test_fpr": 0.84
+      },
+      "2%": {
+        "brute_force": 94.58,
+        "ddos": 95.0,
+        "dns_spoofing": 86.67,
+        "dos": 84.58,
+        "xss": 93.33,
+        "overall_recall": 90.83,
+        "achieved_test_fpr": 1.768
+      },
+      "5%": {
+        "brute_force": 98.33,
+        "ddos": 95.83,
+        "dns_spoofing": 90.83,
+        "dos": 87.08,
+        "xss": 95.0,
+        "overall_recall": 93.42,
+        "achieved_test_fpr": 4.668
+      }
+    }
+  },
+  "voting_soft": {
+    "model": "voting_soft",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 2.5,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9961,
+      "precision": 0.9363,
+      "recall": 0.9308,
+      "f1": 0.9336,
+      "fpr": 0.0019,
+      "fnr": 0.0692,
+      "roc_auc": 0.9994,
+      "pr_auc": 0.9842,
+      "tn": 39924,
+      "fp": 76,
+      "fn": 83,
+      "tp": 1117
+    },
+    "per_attack_default": {
+      "benign": 99.81,
+      "brute_force": 94.58,
+      "ddos": 97.92,
+      "dns_spoofing": 85.83,
+      "dos": 91.67,
+      "xss": 95.42
+    },
+    "threshold_max_recall": 0.17519927593353915,
+    "test_tuned": {
+      "accuracy": 0.9912,
+      "precision": 0.7732,
+      "recall": 0.9858,
+      "f1": 0.8667,
+      "fpr": 0.0087,
+      "fnr": 0.0142,
+      "roc_auc": 0.9994,
+      "pr_auc": 0.9842,
+      "tn": 39653,
+      "fp": 347,
+      "fn": 17,
+      "tp": 1183
+    },
+    "per_attack_tuned": {
+      "benign": 99.13,
+      "brute_force": 99.58,
+      "ddos": 99.58,
+      "dns_spoofing": 96.67,
+      "dos": 97.08,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.46474906221972895,
+    "test_maxf1": {
+      "accuracy": 0.9961,
+      "precision": 0.9247,
+      "recall": 0.9417,
+      "f1": 0.9331,
+      "fpr": 0.0023,
+      "fnr": 0.0583,
+      "roc_auc": 0.9994,
+      "pr_auc": 0.9842,
+      "tn": 39908,
+      "fp": 92,
+      "fn": 70,
+      "tp": 1130
+    },
+    "per_attack_maxf1": {
+      "benign": 99.77,
+      "brute_force": 95.0,
+      "ddos": 97.92,
+      "dns_spoofing": 88.33,
+      "dos": 93.33,
+      "xss": 96.25
+    },
+    "val_default": {
+      "accuracy": 0.9965,
+      "precision": 0.9474,
+      "recall": 0.93,
+      "f1": 0.9386,
+      "fpr": 0.0016,
+      "fnr": 0.07,
+      "roc_auc": 0.9991,
+      "pr_auc": 0.9811,
+      "tn": 39938,
+      "fp": 62,
+      "fn": 84,
+      "tp": 1116
+    },
+    "per_class_auc": {
+      "brute_force": 0.9997,
+      "ddos": 0.9998,
+      "dns_spoofing": 0.9988,
+      "dos": 0.999,
+      "xss": 0.9997
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 90.42,
+        "ddos": 93.75,
+        "dns_spoofing": 78.75,
+        "dos": 82.08,
+        "xss": 90.0,
+        "overall_recall": 87.0,
+        "achieved_test_fpr": 0.077
+      },
+      "0.25%": {
+        "brute_force": 95.0,
+        "ddos": 98.33,
+        "dns_spoofing": 88.75,
+        "dos": 93.75,
+        "xss": 96.25,
+        "overall_recall": 94.42,
+        "achieved_test_fpr": 0.25
+      },
+      "0.5%": {
+        "brute_force": 97.5,
+        "ddos": 99.58,
+        "dns_spoofing": 93.33,
+        "dos": 95.0,
+        "xss": 98.75,
+        "overall_recall": 96.83,
+        "achieved_test_fpr": 0.438
+      },
+      "1%": {
+        "brute_force": 99.58,
+        "ddos": 99.58,
+        "dns_spoofing": 96.67,
+        "dos": 97.08,
+        "xss": 100.0,
+        "overall_recall": 98.58,
+        "achieved_test_fpr": 0.868
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 99.58,
+        "dns_spoofing": 99.17,
+        "dos": 98.75,
+        "xss": 100.0,
+        "overall_recall": 99.5,
+        "achieved_test_fpr": 1.792
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.58,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 4.513
+      }
+    }
+  },
+  "multiclass_xgb": {
+    "model": "multiclass_xgb",
+    "result_status": "clean_split_first",
+    "preprocessing_protocol": "split first; imputation, label-free outlier detection, and scaling fitted on training rows only",
+    "train_time_sec": 700.2,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9957,
+      "precision": 0.8993,
+      "recall": 0.96,
+      "f1": 0.9287,
+      "fpr": 0.0032,
+      "fnr": 0.04,
+      "roc_auc": 0.9995,
+      "pr_auc": 0.988,
+      "tn": 39871,
+      "fp": 129,
+      "fn": 48,
+      "tp": 1152
+    },
+    "per_attack_default": {
+      "benign": 99.68,
+      "brute_force": 98.33,
+      "ddos": 98.75,
+      "dns_spoofing": 91.25,
+      "dos": 94.17,
+      "xss": 97.5
+    },
+    "threshold_max_recall": 0.11778706312279566,
+    "test_tuned": {
+      "accuracy": 0.9901,
+      "precision": 0.7508,
+      "recall": 0.9867,
+      "f1": 0.8527,
+      "fpr": 0.0098,
+      "fnr": 0.0133,
+      "roc_auc": 0.9995,
+      "pr_auc": 0.988,
+      "tn": 39607,
+      "fp": 393,
+      "fn": 16,
+      "tp": 1184
+    },
+    "per_attack_tuned": {
+      "benign": 99.02,
+      "brute_force": 100.0,
+      "ddos": 98.75,
+      "dns_spoofing": 96.67,
+      "dos": 98.33,
+      "xss": 99.58
+    },
+    "threshold_max_f1": 0.763929545880364,
+    "test_maxf1": {
+      "accuracy": 0.9968,
+      "precision": 0.9525,
+      "recall": 0.9358,
+      "f1": 0.9441,
+      "fpr": 0.0014,
+      "fnr": 0.0642,
+      "roc_auc": 0.9995,
+      "pr_auc": 0.988,
+      "tn": 39944,
+      "fp": 56,
+      "fn": 77,
+      "tp": 1123
+    },
+    "per_attack_maxf1": {
+      "benign": 99.86,
+      "brute_force": 95.42,
+      "ddos": 98.33,
+      "dns_spoofing": 86.25,
+      "dos": 92.08,
+      "xss": 95.83
+    },
+    "val_default": {
+      "accuracy": 0.9959,
+      "precision": 0.905,
+      "recall": 0.9608,
+      "f1": 0.9321,
+      "fpr": 0.003,
+      "fnr": 0.0392,
+      "roc_auc": 0.9992,
+      "pr_auc": 0.9867,
+      "tn": 39879,
+      "fp": 121,
+      "fn": 47,
+      "tp": 1153
+    },
+    "per_class_auc": {
+      "brute_force": 0.9998,
+      "ddos": 0.9998,
+      "dns_spoofing": 0.999,
+      "dos": 0.999,
+      "xss": 0.9998
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 94.58,
+        "ddos": 97.92,
+        "dns_spoofing": 84.17,
+        "dos": 91.67,
+        "xss": 94.17,
+        "overall_recall": 92.5,
+        "achieved_test_fpr": 0.085
+      },
+      "0.25%": {
+        "brute_force": 97.5,
+        "ddos": 98.75,
+        "dns_spoofing": 89.58,
+        "dos": 92.5,
+        "xss": 96.67,
+        "overall_recall": 95.0,
+        "achieved_test_fpr": 0.21
+      },
+      "0.5%": {
+        "brute_force": 99.58,
+        "ddos": 98.75,
+        "dns_spoofing": 94.17,
+        "dos": 95.83,
+        "xss": 99.17,
+        "overall_recall": 97.5,
+        "achieved_test_fpr": 0.462
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 98.75,
+        "dns_spoofing": 96.67,
+        "dos": 98.33,
+        "xss": 99.58,
+        "overall_recall": 98.67,
+        "achieved_test_fpr": 0.983
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 99.58,
+        "dns_spoofing": 98.75,
+        "dos": 98.75,
+        "xss": 100.0,
+        "overall_recall": 99.42,
+        "achieved_test_fpr": 1.78
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 99.58,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 4.673
+      }
+    }
+  },
+  "multiclass_xgb__no_anomaly": {
+    "model": "multiclass_xgb__no_anomaly",
+    "train_time_sec": 713.3,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9978,
+      "precision": 0.953,
+      "recall": 0.9739,
+      "f1": 0.9634,
+      "fpr": 0.0015,
+      "fnr": 0.0261,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9943,
+      "tn": 37943,
+      "fp": 57,
+      "fn": 31,
+      "tp": 1157
+    },
+    "per_attack_default": {
+      "benign": 99.85,
+      "brute_force": 99.16,
+      "ddos": 99.58,
+      "dns_spoofing": 92.41,
+      "dos": 96.22,
+      "xss": 99.58
+    },
+    "threshold_max_recall": 0.08775609731774195,
+    "test_tuned": {
+      "accuracy": 0.9916,
+      "precision": 0.786,
+      "recall": 0.9924,
+      "f1": 0.8772,
+      "fpr": 0.0084,
+      "fnr": 0.0076,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9943,
+      "tn": 37679,
+      "fp": 321,
+      "fn": 9,
+      "tp": 1179
+    },
+    "per_attack_tuned": {
+      "benign": 99.16,
+      "brute_force": 100.0,
+      "ddos": 100.0,
+      "dns_spoofing": 99.16,
+      "dos": 97.06,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.815844178200768,
+    "test_maxf1": {
+      "accuracy": 0.998,
+      "precision": 0.9801,
+      "recall": 0.9537,
+      "f1": 0.9667,
+      "fpr": 0.0006,
+      "fnr": 0.0463,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9943,
+      "tn": 37977,
+      "fp": 23,
+      "fn": 55,
+      "tp": 1133
+    },
+    "per_attack_maxf1": {
+      "benign": 99.94,
+      "brute_force": 96.64,
+      "ddos": 98.32,
+      "dns_spoofing": 88.61,
+      "dos": 94.54,
+      "xss": 98.73
+    },
+    "val_default": {
+      "accuracy": 0.9974,
+      "precision": 0.9401,
+      "recall": 0.9773,
+      "f1": 0.9583,
+      "fpr": 0.0019,
+      "fnr": 0.0227,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9946,
+      "tn": 37926,
+      "fp": 74,
+      "fn": 27,
+      "tp": 1161
+    },
+    "per_class_auc": {
+      "brute_force": 0.9999,
+      "ddos": 1.0,
+      "dns_spoofing": 0.9995,
+      "dos": 0.9995,
+      "xss": 1.0
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 96.64,
+        "ddos": 98.32,
+        "dns_spoofing": 88.61,
+        "dos": 94.54,
+        "xss": 98.73,
+        "overall_recall": 95.37,
+        "achieved_test_fpr": 0.061
+      },
+      "0.25%": {
+        "brute_force": 99.16,
+        "ddos": 99.58,
+        "dns_spoofing": 92.41,
+        "dos": 96.22,
+        "xss": 99.58,
+        "overall_recall": 97.39,
+        "achieved_test_fpr": 0.15
+      },
+      "0.5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 95.78,
+        "dos": 96.64,
+        "xss": 99.58,
+        "overall_recall": 98.4,
+        "achieved_test_fpr": 0.345
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.16,
+        "dos": 97.06,
+        "xss": 100.0,
+        "overall_recall": 99.24,
+        "achieved_test_fpr": 0.845
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.58,
+        "dos": 98.74,
+        "xss": 100.0,
+        "overall_recall": 99.66,
+        "achieved_test_fpr": 1.766
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 100.0,
+        "achieved_test_fpr": 4.784
+      }
+    }
+  },
+  "random_forest__no_anomaly": {
+    "model": "random_forest__no_anomaly",
+    "train_time_sec": 38.1,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9973,
+      "precision": 0.9509,
+      "recall": 0.9613,
+      "f1": 0.956,
+      "fpr": 0.0016,
+      "fnr": 0.0387,
+      "roc_auc": 0.9997,
+      "pr_auc": 0.9923,
+      "tn": 37941,
+      "fp": 59,
+      "fn": 46,
+      "tp": 1142
+    },
+    "per_attack_default": {
+      "benign": 99.84,
+      "brute_force": 98.74,
+      "ddos": 99.16,
+      "dns_spoofing": 89.03,
+      "dos": 94.54,
+      "xss": 99.16
+    },
+    "threshold_max_recall": 0.19081479943422047,
+    "test_tuned": {
+      "accuracy": 0.9912,
+      "precision": 0.778,
+      "recall": 0.9941,
+      "f1": 0.8729,
+      "fpr": 0.0089,
+      "fnr": 0.0059,
+      "roc_auc": 0.9997,
+      "pr_auc": 0.9923,
+      "tn": 37663,
+      "fp": 337,
+      "fn": 7,
+      "tp": 1181
+    },
+    "per_attack_tuned": {
+      "benign": 99.11,
+      "brute_force": 100.0,
+      "ddos": 100.0,
+      "dns_spoofing": 98.31,
+      "dos": 98.74,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.5769468811287264,
+    "test_maxf1": {
+      "accuracy": 0.9973,
+      "precision": 0.9632,
+      "recall": 0.947,
+      "f1": 0.955,
+      "fpr": 0.0011,
+      "fnr": 0.053,
+      "roc_auc": 0.9997,
+      "pr_auc": 0.9923,
+      "tn": 37957,
+      "fp": 43,
+      "fn": 63,
+      "tp": 1125
+    },
+    "per_attack_maxf1": {
+      "benign": 99.89,
+      "brute_force": 97.9,
+      "ddos": 98.74,
+      "dns_spoofing": 85.65,
+      "dos": 93.28,
+      "xss": 97.89
+    },
+    "val_default": {
+      "accuracy": 0.9975,
+      "precision": 0.9519,
+      "recall": 0.9655,
+      "f1": 0.9586,
+      "fpr": 0.0015,
+      "fnr": 0.0345,
+      "roc_auc": 0.9997,
+      "pr_auc": 0.9931,
+      "tn": 37942,
+      "fp": 58,
+      "fn": 41,
+      "tp": 1147
+    },
+    "per_class_auc": {
+      "brute_force": 0.9999,
+      "ddos": 1.0,
+      "dns_spoofing": 0.9993,
+      "dos": 0.9996,
+      "xss": 0.9999
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 97.06,
+        "ddos": 98.32,
+        "dns_spoofing": 81.01,
+        "dos": 93.28,
+        "xss": 96.62,
+        "overall_recall": 93.27,
+        "achieved_test_fpr": 0.076
+      },
+      "0.25%": {
+        "brute_force": 99.58,
+        "ddos": 99.58,
+        "dns_spoofing": 90.3,
+        "dos": 95.38,
+        "xss": 99.16,
+        "overall_recall": 96.8,
+        "achieved_test_fpr": 0.174
+      },
+      "0.5%": {
+        "brute_force": 99.58,
+        "ddos": 100.0,
+        "dns_spoofing": 95.36,
+        "dos": 96.64,
+        "xss": 100.0,
+        "overall_recall": 98.32,
+        "achieved_test_fpr": 0.389
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 98.31,
+        "dos": 98.74,
+        "xss": 100.0,
+        "overall_recall": 99.41,
+        "achieved_test_fpr": 0.887
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 99.58,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 1.871
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 100.0,
+        "achieved_test_fpr": 4.711
+      }
+    }
+  },
+  "xgboost__no_anomaly": {
+    "model": "xgboost__no_anomaly",
+    "train_time_sec": 28.3,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9986,
+      "precision": 0.9797,
+      "recall": 0.9747,
+      "f1": 0.9772,
+      "fpr": 0.0006,
+      "fnr": 0.0253,
+      "roc_auc": 0.9999,
+      "pr_auc": 0.9964,
+      "tn": 37976,
+      "fp": 24,
+      "fn": 30,
+      "tp": 1158
+    },
+    "per_attack_default": {
+      "benign": 99.94,
+      "brute_force": 99.16,
+      "ddos": 99.16,
+      "dns_spoofing": 92.41,
+      "dos": 97.48,
+      "xss": 99.16
+    },
+    "threshold_max_recall": 0.00747378682817681,
+    "test_tuned": {
+      "accuracy": 0.9923,
+      "precision": 0.7984,
+      "recall": 0.9966,
+      "f1": 0.8866,
+      "fpr": 0.0079,
+      "fnr": 0.0034,
+      "roc_auc": 0.9999,
+      "pr_auc": 0.9964,
+      "tn": 37701,
+      "fp": 299,
+      "fn": 4,
+      "tp": 1184
+    },
+    "per_attack_tuned": {
+      "benign": 99.21,
+      "brute_force": 100.0,
+      "ddos": 100.0,
+      "dns_spoofing": 99.16,
+      "dos": 99.16,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.5408037900934682,
+    "test_maxf1": {
+      "accuracy": 0.9985,
+      "precision": 0.9805,
+      "recall": 0.9714,
+      "f1": 0.9759,
+      "fpr": 0.0006,
+      "fnr": 0.0286,
+      "roc_auc": 0.9999,
+      "pr_auc": 0.9964,
+      "tn": 37977,
+      "fp": 23,
+      "fn": 34,
+      "tp": 1154
+    },
+    "per_attack_maxf1": {
+      "benign": 99.94,
+      "brute_force": 98.74,
+      "ddos": 99.16,
+      "dns_spoofing": 91.56,
+      "dos": 97.06,
+      "xss": 99.16
+    },
+    "val_default": {
+      "accuracy": 0.9984,
+      "precision": 0.9707,
+      "recall": 0.9756,
+      "f1": 0.9731,
+      "fpr": 0.0009,
+      "fnr": 0.0244,
+      "roc_auc": 0.9997,
+      "pr_auc": 0.9954,
+      "tn": 37965,
+      "fp": 35,
+      "fn": 29,
+      "tp": 1159
+    },
+    "per_class_auc": {
+      "brute_force": 1.0,
+      "ddos": 1.0,
+      "dns_spoofing": 0.9997,
+      "dos": 0.9997,
+      "xss": 1.0
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 97.9,
+        "ddos": 98.74,
+        "dns_spoofing": 90.3,
+        "dos": 96.64,
+        "xss": 99.16,
+        "overall_recall": 96.55,
+        "achieved_test_fpr": 0.05
+      },
+      "0.25%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 94.51,
+        "dos": 97.48,
+        "xss": 99.16,
+        "overall_recall": 98.23,
+        "achieved_test_fpr": 0.158
+      },
+      "0.5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 97.47,
+        "dos": 97.48,
+        "xss": 100.0,
+        "overall_recall": 98.99,
+        "achieved_test_fpr": 0.358
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.16,
+        "dos": 99.16,
+        "xss": 100.0,
+        "overall_recall": 99.66,
+        "achieved_test_fpr": 0.787
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 99.58,
+        "xss": 100.0,
+        "overall_recall": 99.92,
+        "achieved_test_fpr": 1.85
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 100.0,
+        "achieved_test_fpr": 4.842
+      }
+    }
+  },
+  "linear_svm__no_anomaly": {
+    "model": "linear_svm__no_anomaly",
+    "train_time_sec": 51.3,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9789,
+      "precision": 0.8,
+      "recall": 0.404,
+      "f1": 0.5369,
+      "fpr": 0.0032,
+      "fnr": 0.596,
+      "roc_auc": 0.9628,
+      "pr_auc": 0.6606,
+      "tn": 37880,
+      "fp": 120,
+      "fn": 708,
+      "tp": 480
+    },
+    "per_attack_default": {
+      "benign": 99.68,
+      "brute_force": 13.45,
+      "ddos": 81.93,
+      "dns_spoofing": 29.11,
+      "dos": 67.23,
+      "xss": 10.13
+    },
+    "threshold_max_recall": 0.27068619263064647,
+    "test_tuned": {
+      "accuracy": 0.9772,
+      "precision": 0.6725,
+      "recall": 0.4823,
+      "f1": 0.5618,
+      "fpr": 0.0073,
+      "fnr": 0.5177,
+      "roc_auc": 0.9628,
+      "pr_auc": 0.6606,
+      "tn": 37721,
+      "fp": 279,
+      "fn": 615,
+      "tp": 573
+    },
+    "per_attack_tuned": {
+      "benign": 99.27,
+      "brute_force": 26.05,
+      "ddos": 89.08,
+      "dns_spoofing": 30.8,
+      "dos": 75.21,
+      "xss": 19.83
+    },
+    "threshold_max_f1": 0.27114547696002367,
+    "test_maxf1": {
+      "accuracy": 0.9772,
+      "precision": 0.6741,
+      "recall": 0.4823,
+      "f1": 0.5623,
+      "fpr": 0.0073,
+      "fnr": 0.5177,
+      "roc_auc": 0.9628,
+      "pr_auc": 0.6606,
+      "tn": 37723,
+      "fp": 277,
+      "fn": 615,
+      "tp": 573
+    },
+    "per_attack_maxf1": {
+      "benign": 99.27,
+      "brute_force": 26.05,
+      "ddos": 89.08,
+      "dns_spoofing": 30.8,
+      "dos": 75.21,
+      "xss": 19.83
+    },
+    "val_default": {
+      "accuracy": 0.9782,
+      "precision": 0.7823,
+      "recall": 0.3872,
+      "f1": 0.518,
+      "fpr": 0.0034,
+      "fnr": 0.6128,
+      "roc_auc": 0.9575,
+      "pr_auc": 0.6394,
+      "tn": 18936,
+      "fp": 64,
+      "fn": 364,
+      "tp": 230
+    },
+    "per_class_auc": {
+      "brute_force": 0.9672,
+      "ddos": 0.9942,
+      "dns_spoofing": 0.9211,
+      "dos": 0.9571,
+      "xss": 0.9742
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 4.62,
+        "ddos": 54.62,
+        "dns_spoofing": 19.83,
+        "dos": 54.2,
+        "xss": 5.06,
+        "overall_recall": 27.69,
+        "achieved_test_fpr": 0.039
+      },
+      "0.25%": {
+        "brute_force": 8.82,
+        "ddos": 69.75,
+        "dns_spoofing": 24.47,
+        "dos": 61.76,
+        "xss": 8.44,
+        "overall_recall": 34.68,
+        "achieved_test_fpr": 0.187
+      },
+      "0.5%": {
+        "brute_force": 13.87,
+        "ddos": 84.87,
+        "dns_spoofing": 29.11,
+        "dos": 68.91,
+        "xss": 10.97,
+        "overall_recall": 41.58,
+        "achieved_test_fpr": 0.366
+      },
+      "1%": {
+        "brute_force": 26.05,
+        "ddos": 89.08,
+        "dns_spoofing": 30.8,
+        "dos": 75.21,
+        "xss": 19.83,
+        "overall_recall": 48.23,
+        "achieved_test_fpr": 0.734
+      },
+      "2%": {
+        "brute_force": 54.62,
+        "ddos": 94.96,
+        "dns_spoofing": 40.51,
+        "dos": 79.83,
+        "xss": 57.38,
+        "overall_recall": 65.49,
+        "achieved_test_fpr": 1.726
+      },
+      "5%": {
+        "brute_force": 84.45,
+        "ddos": 97.06,
+        "dns_spoofing": 59.07,
+        "dos": 83.19,
+        "xss": 89.45,
+        "overall_recall": 82.66,
+        "achieved_test_fpr": 4.663
+      }
+    }
+  },
+  "mlp__no_anomaly": {
+    "model": "mlp__no_anomaly",
+    "train_time_sec": 92.7,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9953,
+      "precision": 0.9204,
+      "recall": 0.9242,
+      "f1": 0.9223,
+      "fpr": 0.0025,
+      "fnr": 0.0758,
+      "roc_auc": 0.9958,
+      "pr_auc": 0.9663,
+      "tn": 37905,
+      "fp": 95,
+      "fn": 90,
+      "tp": 1098
+    },
+    "per_attack_default": {
+      "benign": 99.75,
+      "brute_force": 94.54,
+      "ddos": 99.16,
+      "dns_spoofing": 80.17,
+      "dos": 95.38,
+      "xss": 92.83
+    },
+    "threshold_max_recall": 0.10140554607014521,
+    "test_tuned": {
+      "accuracy": 0.9907,
+      "precision": 0.7837,
+      "recall": 0.9579,
+      "f1": 0.8621,
+      "fpr": 0.0083,
+      "fnr": 0.0421,
+      "roc_auc": 0.9958,
+      "pr_auc": 0.9663,
+      "tn": 37686,
+      "fp": 314,
+      "fn": 50,
+      "tp": 1138
+    },
+    "per_attack_tuned": {
+      "benign": 99.17,
+      "brute_force": 97.48,
+      "ddos": 99.58,
+      "dns_spoofing": 89.45,
+      "dos": 96.22,
+      "xss": 96.2
+    },
+    "threshold_max_f1": 0.7294769287119375,
+    "test_maxf1": {
+      "accuracy": 0.9957,
+      "precision": 0.9562,
+      "recall": 0.8998,
+      "f1": 0.9271,
+      "fpr": 0.0013,
+      "fnr": 0.1002,
+      "roc_auc": 0.9958,
+      "pr_auc": 0.9663,
+      "tn": 37951,
+      "fp": 49,
+      "fn": 119,
+      "tp": 1069
+    },
+    "per_attack_maxf1": {
+      "benign": 99.87,
+      "brute_force": 92.44,
+      "ddos": 98.74,
+      "dns_spoofing": 74.26,
+      "dos": 94.54,
+      "xss": 89.87
+    },
+    "val_default": {
+      "accuracy": 0.9953,
+      "precision": 0.9211,
+      "recall": 0.9234,
+      "f1": 0.9222,
+      "fpr": 0.0025,
+      "fnr": 0.0766,
+      "roc_auc": 0.9968,
+      "pr_auc": 0.9674,
+      "tn": 37906,
+      "fp": 94,
+      "fn": 91,
+      "tp": 1097
+    },
+    "per_class_auc": {
+      "brute_force": 0.9979,
+      "ddos": 0.9999,
+      "dns_spoofing": 0.9888,
+      "dos": 0.9948,
+      "xss": 0.9973
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 89.5,
+        "ddos": 98.74,
+        "dns_spoofing": 67.51,
+        "dos": 93.28,
+        "xss": 84.39,
+        "overall_recall": 86.7,
+        "achieved_test_fpr": 0.061
+      },
+      "0.25%": {
+        "brute_force": 93.28,
+        "ddos": 99.16,
+        "dns_spoofing": 78.06,
+        "dos": 94.96,
+        "xss": 91.98,
+        "overall_recall": 91.5,
+        "achieved_test_fpr": 0.187
+      },
+      "0.5%": {
+        "brute_force": 97.06,
+        "ddos": 99.58,
+        "dns_spoofing": 83.12,
+        "dos": 95.38,
+        "xss": 94.94,
+        "overall_recall": 94.02,
+        "achieved_test_fpr": 0.418
+      },
+      "1%": {
+        "brute_force": 97.48,
+        "ddos": 99.58,
+        "dns_spoofing": 89.45,
+        "dos": 96.22,
+        "xss": 96.2,
+        "overall_recall": 95.79,
+        "achieved_test_fpr": 0.826
+      },
+      "2%": {
+        "brute_force": 97.9,
+        "ddos": 100.0,
+        "dns_spoofing": 91.14,
+        "dos": 97.48,
+        "xss": 97.47,
+        "overall_recall": 96.8,
+        "achieved_test_fpr": 1.8
+      },
+      "5%": {
+        "brute_force": 98.32,
+        "ddos": 100.0,
+        "dns_spoofing": 94.51,
+        "dos": 98.32,
+        "xss": 98.31,
+        "overall_recall": 97.9,
+        "achieved_test_fpr": 4.766
+      }
+    }
+  },
+  "voting_soft__no_anomaly": {
+    "model": "voting_soft__no_anomaly",
+    "train_time_sec": 1.3,
+    "fpr_budget": 0.01,
+    "test_default": {
+      "accuracy": 0.9982,
+      "precision": 0.9761,
+      "recall": 0.963,
+      "f1": 0.9695,
+      "fpr": 0.0007,
+      "fnr": 0.037,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9939,
+      "tn": 37972,
+      "fp": 28,
+      "fn": 44,
+      "tp": 1144
+    },
+    "per_attack_default": {
+      "benign": 99.93,
+      "brute_force": 98.32,
+      "ddos": 99.58,
+      "dns_spoofing": 88.61,
+      "dos": 96.22,
+      "xss": 98.73
+    },
+    "threshold_max_recall": 0.10677593146021748,
+    "test_tuned": {
+      "accuracy": 0.9915,
+      "precision": 0.7838,
+      "recall": 0.9916,
+      "f1": 0.8755,
+      "fpr": 0.0086,
+      "fnr": 0.0084,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9939,
+      "tn": 37675,
+      "fp": 325,
+      "fn": 10,
+      "tp": 1178
+    },
+    "per_attack_tuned": {
+      "benign": 99.14,
+      "brute_force": 100.0,
+      "ddos": 100.0,
+      "dns_spoofing": 97.89,
+      "dos": 97.9,
+      "xss": 100.0
+    },
+    "threshold_max_f1": 0.572434040705736,
+    "test_maxf1": {
+      "accuracy": 0.9982,
+      "precision": 0.9852,
+      "recall": 0.9537,
+      "f1": 0.9692,
+      "fpr": 0.0004,
+      "fnr": 0.0463,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9939,
+      "tn": 37983,
+      "fp": 17,
+      "fn": 55,
+      "tp": 1133
+    },
+    "per_attack_maxf1": {
+      "benign": 99.96,
+      "brute_force": 97.48,
+      "ddos": 99.16,
+      "dns_spoofing": 86.08,
+      "dos": 96.22,
+      "xss": 97.89
+    },
+    "val_default": {
+      "accuracy": 0.998,
+      "precision": 0.9695,
+      "recall": 0.963,
+      "f1": 0.9662,
+      "fpr": 0.0009,
+      "fnr": 0.037,
+      "roc_auc": 0.9998,
+      "pr_auc": 0.9946,
+      "tn": 37964,
+      "fp": 36,
+      "fn": 44,
+      "tp": 1144
+    },
+    "per_class_auc": {
+      "brute_force": 0.9999,
+      "ddos": 1.0,
+      "dns_spoofing": 0.9994,
+      "dos": 0.9996,
+      "xss": 0.9999
+    },
+    "detection_vs_budget": {
+      "0.1%": {
+        "brute_force": 97.48,
+        "ddos": 99.16,
+        "dns_spoofing": 86.08,
+        "dos": 96.22,
+        "xss": 97.89,
+        "overall_recall": 95.37,
+        "achieved_test_fpr": 0.045
+      },
+      "0.25%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 93.25,
+        "dos": 97.48,
+        "xss": 99.16,
+        "overall_recall": 97.98,
+        "achieved_test_fpr": 0.182
+      },
+      "0.5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 95.78,
+        "dos": 97.48,
+        "xss": 99.58,
+        "overall_recall": 98.57,
+        "achieved_test_fpr": 0.387
+      },
+      "1%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 97.89,
+        "dos": 97.9,
+        "xss": 100.0,
+        "overall_recall": 99.16,
+        "achieved_test_fpr": 0.855
+      },
+      "2%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 99.58,
+        "dos": 99.58,
+        "xss": 100.0,
+        "overall_recall": 99.83,
+        "achieved_test_fpr": 1.911
+      },
+      "5%": {
+        "brute_force": 100.0,
+        "ddos": 100.0,
+        "dns_spoofing": 100.0,
+        "dos": 100.0,
+        "xss": 100.0,
+        "overall_recall": 100.0,
+        "achieved_test_fpr": 4.718
+      }
+    }
+  },
+  "two_stage_system": {
+    "stage": "two_stage_system",
+    "stage1_detector": "autoencoder",
+    "stage2_detector": "multiclass_xgb",
+    "combined": {
+      "accuracy": 0.9235,
+      "precision": 0.2781,
+      "recall": 0.9554,
+      "f1": 0.4308,
+      "fpr": 0.0775,
+      "tn": 35054,
+      "fp": 2946,
+      "fn": 53,
+      "tp": 1135
+    },
+    "stage1_recall": 0.9596,
+    "stage1_fp": 3742,
+    "fp_reduction_pct_vs_phase2": 21.27,
+    "alerts_unmapped": 551
+  }
+}
