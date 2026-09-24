@@ -1,0 +1,168 @@
+{
+  "model": "binary_xgboost",
+  "model_objective": "binary:logistic",
+  "model_parameters": {
+    "objective": "binary:logistic",
+    "n_estimators": 400,
+    "max_depth": 8,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 1,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "eval_metric": "aucpr",
+    "n_jobs": -1,
+    "random_state": 1
+  },
+  "class_weighting": "scale_pos_weight = fit benign / fit attack",
+  "seed": 1,
+  "preprocessing": "split first; training-median imputation; fixed log1p; training-only label-free IsolationForest outlier removal; training-only StandardScaler",
+  "day_plan": {
+    "benign": [
+      "2022-10-07",
+      "2022-10-08"
+    ],
+    "brute_force": [
+      "2022-10-17",
+      "2022-10-14"
+    ],
+    "ddos": [
+      "2022-09-14",
+      "2022-11-07"
+    ],
+    "dns_spoofing": [
+      "2022-11-16",
+      "2022-11-15"
+    ],
+    "dos": [
+      "2022-08-08",
+      "2022-08-09"
+    ]
+  },
+  "excluded": [
+    "xss"
+  ],
+  "conditions": [
+    {
+      "condition": "C3 benign=random, attacks=random  (reference)",
+      "n_train": 108953,
+      "n_threshold": 28672,
+      "n_test": 61440,
+      "n_train_before_outliers": 114688,
+      "train_outliers_removed": 5735,
+      "threshold_source": "held-out 20% of train",
+      "threshold": 0.012648039498435093,
+      "scale_pos_weight": 56.28338590956888,
+      "pr_auc": 0.9811,
+      "roc_auc": 0.9984,
+      "precision_at_budget": 0.6967,
+      "recall_at_budget": 0.9812,
+      "f1_at_budget": 0.8149,
+      "achieved_test_fpr": 0.0103,
+      "fpr_budget": 0.01,
+      "per_attack_detection": {
+        "brute_force": 99.44,
+        "ddos": 99.72,
+        "dns_spoofing": 95.28,
+        "dos": 98.06
+      },
+      "per_class_auc": {
+        "brute_force": 0.9996,
+        "ddos": 0.9998,
+        "dns_spoofing": 0.9948,
+        "dos": 0.9993
+      }
+    },
+    {
+      "condition": "C1 benign=DAY held out, attacks=random",
+      "n_train": 82794,
+      "n_threshold": 21788,
+      "n_test": 95860,
+      "n_train_before_outliers": 87152,
+      "train_outliers_removed": 4358,
+      "threshold_source": "held-out 20% of train",
+      "threshold": 0.038802620024489,
+      "scale_pos_weight": 44.5663181067694,
+      "pr_auc": 0.4848,
+      "roc_auc": 0.9561,
+      "precision_at_budget": 0.0496,
+      "recall_at_budget": 0.9861,
+      "f1_at_budget": 0.0945,
+      "achieved_test_fpr": 0.288,
+      "fpr_budget": 0.01,
+      "per_attack_detection": {
+        "brute_force": 99.72,
+        "ddos": 99.72,
+        "dns_spoofing": 96.67,
+        "dos": 98.33
+      },
+      "per_class_auc": {
+        "brute_force": 0.9597,
+        "ddos": 0.9875,
+        "dns_spoofing": 0.93,
+        "dos": 0.9473
+      }
+    },
+    {
+      "condition": "C2 benign=random, attacks=DAY held out",
+      "n_train": 108587,
+      "n_threshold": 28576,
+      "n_test": 61914,
+      "n_train_before_outliers": 114303,
+      "train_outliers_removed": 5716,
+      "threshold_source": "held-out 20% of train",
+      "threshold": 0.016696590931223464,
+      "scale_pos_weight": 61.15626788780767,
+      "pr_auc": 0.9637,
+      "roc_auc": 0.9979,
+      "precision_at_budget": 0.7843,
+      "recall_at_budget": 0.9425,
+      "f1_at_budget": 0.8562,
+      "achieved_test_fpr": 0.0083,
+      "fpr_budget": 0.01,
+      "per_attack_detection": {
+        "brute_force": 99.12,
+        "ddos": 99.0,
+        "dns_spoofing": 81.6,
+        "dos": 96.44
+      },
+      "per_class_auc": {
+        "brute_force": 0.9996,
+        "ddos": 0.9997,
+        "dns_spoofing": 0.9939,
+        "dos": 0.9984
+      }
+    },
+    {
+      "condition": "C0 benign=DAY, attacks=DAY  (honest generalisation)",
+      "n_train": 82429,
+      "n_threshold": 21692,
+      "n_test": 96334,
+      "n_train_before_outliers": 86767,
+      "train_outliers_removed": 4338,
+      "threshold_source": "held-out 20% of train",
+      "threshold": 0.01640547253291471,
+      "scale_pos_weight": 46.75724217844728,
+      "pr_auc": 0.125,
+      "roc_auc": 0.9075,
+      "precision_at_budget": 0.0708,
+      "recall_at_budget": 0.9525,
+      "f1_at_budget": 0.1318,
+      "achieved_test_fpr": 0.2535,
+      "fpr_budget": 0.01,
+      "per_attack_detection": {
+        "brute_force": 99.12,
+        "ddos": 99.15,
+        "dns_spoofing": 84.67,
+        "dos": 97.18
+      },
+      "per_class_auc": {
+        "brute_force": 0.9175,
+        "ddos": 0.9305,
+        "dns_spoofing": 0.8565,
+        "dos": 0.9138
+      }
+    }
+  ]
+}

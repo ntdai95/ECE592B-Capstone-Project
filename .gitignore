@@ -21,6 +21,10 @@ env/
 
 # Training / experiment outputs
 results/
+!results/
+results/*
+!results/session_holdout_results.json
+!results/session_holdout_binary_xgb_results.json
 runs/
 logs/
 *.log
