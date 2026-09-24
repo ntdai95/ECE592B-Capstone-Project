@@ -37,7 +37,12 @@ Clean confusion counts: TN=39,607, FP=393, FN=16, TP=1,184. The selected
 hyperparameters were `max_depth=8`, `gamma=0.1`; grid-search validation log loss
 was 0.0177.
 
-## Four-condition session holdout
+## Four-condition session holdout (binary XGBoost)
+
+These session-holdout values belong to the binary XGBoost evaluator, not the
+multiclass headline immediately above. An explicit `binary:logistic` rerun
+reproduced every clean condition metric exactly; no independently verified
+multiclass four-condition artifact is available.
 
 | Condition | Old PR-AUC | Clean PR-AUC | Old recall | Clean recall | Old FPR | Clean FPR | Clean precision | Clean F1 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -75,7 +80,8 @@ python -c "import sys; sys.path.insert(0, 'Phase_3'); import multiclass_xgboost 
 python Phase_3/eval_session_holdout.py
 ```
 
-Resume-safe phrasing: **Built and leakage-audited a multiclass XGBoost IoT IDS;
-under split-first preprocessing it achieved 98.67% recall at 0.98% FPR and
-0.988 PR-AUC on a held-out random test set, while session-disjoint PR-AUC fell to
-0.125, exposing capture-session shift.**
+Resume-safe phrasing: **Built and leakage-audited a binary XGBoost IoT IDS;
+under split-first preprocessing it achieved 99.50% recall at 0.94% FPR and
+0.9893 PR-AUC on a held-out random test set, while capture-session testing
+reduced PR-AUC from 0.9811 to 0.1250 and drove FPR to 25.35% at 95.25% recall,
+exposing capture-session shift.**

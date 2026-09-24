@@ -1,7 +1,5 @@
 import argparse
 import json
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 from xgboost import XGBClassifier
@@ -20,7 +18,8 @@ DAY_PLAN = {
     "dns_spoofing": ("2022-11-16", "2022-11-15"),
     "dos":          ("2022-08-08", "2022-08-09"),
 }
-XGB_KW = dict(n_estimators=400, max_depth=8, learning_rate=0.1, subsample=0.8,
+XGB_KW = dict(objective="binary:logistic",
+              n_estimators=400, max_depth=8, learning_rate=0.1, subsample=0.8,
               colsample_bytree=0.8, min_child_weight=1, reg_lambda=1.0,
               tree_method="hist", eval_metric="aucpr", n_jobs=-1, random_state=SEED)
 
@@ -121,6 +120,8 @@ def run_condition(tag, X, lab, tr, te, flow_features):
         "n_train_before_outliers": int(train_before_outliers),
         "train_outliers_removed": outliers_removed,
         "threshold_source": "held-out 20% of train",
+        "threshold": float(thr),
+        "scale_pos_weight": spw,
         "pr_auc": round(float(average_precision_score(yte, s)), 4),
         "roc_auc": round(float(roc_auc_score(yte, s)), 4),
         "precision_at_budget": round(precision, 4),
@@ -141,7 +142,8 @@ def run_condition(tag, X, lab, tr, te, flow_features):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Capture-session held-out evaluation")
+    ap = argparse.ArgumentParser(
+        description="Binary-XGBoost capture-session held-out evaluation")
     ap.add_argument("--features", default="all", choices=["all", "base"],
                     help="'base' drops the ctx_* context features")
     args = ap.parse_args()
@@ -165,10 +167,25 @@ def main():
         tr, te = build_masks(lab, day, bmode, amode, rng)
         results.append(run_condition(tag, X, lab, tr, te, flow_features))
 
-    out = {"day_plan": DAY_PLAN, "excluded": ["xss"], "conditions": results}
+    out = {
+        "model": "binary_xgboost",
+        "model_objective": XGB_KW["objective"],
+        "model_parameters": XGB_KW,
+        "class_weighting": "scale_pos_weight = fit benign / fit attack",
+        "seed": SEED,
+        "preprocessing": (
+            "split first; training-median imputation; fixed log1p; "
+            "training-only label-free IsolationForest outlier removal; "
+            "training-only StandardScaler"
+        ),
+        "day_plan": DAY_PLAN,
+        "excluded": ["xss"],
+        "conditions": results,
+    }
     if base:
         out["feature_set"] = "base (context features excluded)"
-    name = "session_holdout_base_results.json" if base else "session_holdout_results.json"
+    name = ("session_holdout_binary_xgb_base_results.json" if base else
+            "session_holdout_binary_xgb_results.json")
     with open(f"{OUT}/{name}", "w") as f:
         json.dump(out, f, indent=2)
     print(f"\nSaved {OUT}/{name}")
