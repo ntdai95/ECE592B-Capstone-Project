@@ -1,7 +1,7 @@
-# Phase 2 — Overview
+# Phase 2 Overview
 
-Packet-level **unsupervised anomaly detection** (network intrusion detection) for
-the ECE 597 IoT capstone. Phase 2 takes the preprocessed packet feature tables
+Phase 2 runs packet-level **unsupervised anomaly detection** (network intrusion
+detection) for the ECE 597 IoT capstone. Phase 2 takes the preprocessed packet feature tables
 produced by Phase 1 and runs a set of anomaly detectors that flag attack traffic
 **without using labels at training time**. Labels are used only to (a) pick an
 operating threshold on a validation split and (b) compute the final metrics.
@@ -26,9 +26,9 @@ operating threshold on a validation split and (b) compute the final metrics.
 | Model | Role | Owner |
 |---|---|---|
 | **Deep SVDD** | Headline deep one-class method (AE pretrain + hypersphere objective) | **This project (yours)** |
-| **Anomal-E** | GNN centerpiece — transductive E-GraphSAGE + Deep Graph Infomax, downstream Isolation Forest on edge embeddings | **This project (yours)** |
+| **Anomal-E** | GNN centerpiece, transductive E-GraphSAGE + Deep Graph Infomax, downstream Isolation Forest on edge embeddings | **This project (yours)** |
 | **Fusion** | Quantile-normalized **max** of `anomal_e + deep_svdd` | **This project (yours)** |
-| k-means, autoencoder | **Intentionally NOT here** — teammate (Adam)'s scope | Separate |
+| k-means, autoencoder | **Intentionally NOT here**, teammate (Adam)'s scope | Separate |
 
 > The three models in this deliverable are **Deep SVDD**, **Anomal-E** (the GNN),
 > and their **Fusion**. Fusion combines the two models' normalized anomaly scores
@@ -43,16 +43,16 @@ operating threshold on a validation split and (b) compute the final metrics.
 | `config.py` | Central paths (`DATA_DIR`, `RESULTS_DIR`), column names (`id`, `label`), feature-set registry, seeds, split fractions, threshold targets. `ROOT` resolves to the repo root (`parents[1]`). |
 | `data.py` | `Dataset` dataclass (X, y_bin, y_multi, ids, feature_names); `load_feature_table`, `to_dataset` (NaN/inf sanitizing), `stratified_split`, `subsample` (quick mode), `load_splits`. |
 | `preprocess.py` | Feature scaling used by the pipeline: `make_scaler` (quantile / robust / standard / log_standard / none), `find_zero_variance`, `drop_features`, `apply_scaler`. **All fit on train only.** |
-| `detectors/__init__.py` | `BaseDetector` ABC — uniform `fit(X)` / `score(X)` interface (higher score = more anomalous). |
-| `detectors/deepsvdd.py` | `DeepSVDD` — autoencoder pretraining then one-class hypersphere objective (Ruff et al., 2018). |
-| `detectors/anomal_e.py` | `AnomalE` — transductive GNN; `fit_score_transductive(train, val, test)` builds one graph over all packets, trains DGI, fits Isolation Forest on train edge embeddings. |
-| `detectors/graph.py` | `build_graph`, `load_ids_table` — turns packets into a host communication graph (nodes = IPs/MACs, edges = packets). |
+| `detectors/__init__.py` | `BaseDetector` ABC, uniform `fit(X)` / `score(X)` interface (higher score = more anomalous). |
+| `detectors/deepsvdd.py` | `DeepSVDD`, autoencoder pretraining then one-class hypersphere objective (Ruff et al., 2018). |
+| `detectors/anomal_e.py` | `AnomalE`, transductive GNN; `fit_score_transductive(train, val, test)` builds one graph over all packets, trains DGI, fits Isolation Forest on train edge embeddings. |
+| `detectors/graph.py` | `build_graph`, `load_ids_table`, turns packets into a host communication graph (nodes = IPs/MACs, edges = packets). |
 | `fusion.py` | `normalize_ref` (quantile/ECDF normalization against a reference distribution), `fuse` (max/mean combine). |
 | `metrics.py` | `EvalResult`, `pick_threshold` (recall_first / fpr_capped / youden), `evaluate` (precision, recall, F1, FPR, FNR, AUC-ROC, PR-AUC, per-attack DR, confusion), `aggregate_results`. |
 | `plots.py` | ROC / PR / confusion / per-attack-DR / UMAP-embedding figures → `results/figures/`. |
 | `eda.py` | Diagnostic EDA (data quality, per-attack detectability, PCA dimensionality, graph topology). |
 | `tune.py` | Grid-search hyperparameter tuning with **multi-seed** selection on validation ROC-AUC. |
-| `run_phase2.py` | **Orchestrator / entry point** — ties everything together. |
+| `run_phase2.py` | **Orchestrator / entry point**, ties everything together. |
 
 ---
 
@@ -106,7 +106,7 @@ is fit on train edges only, with the threshold chosen on validation.
 
 ## 4. Relationship to Phase 1
 
-- **Coupling is a file-artifact contract only — there is no Python import between
+- **Coupling is a file-artifact contract only, there is no Python import between
   the phases.** Phase 1 (`Phase_1/data_preprocessing_packet.py`) writes the three
   CSVs into `data/processed_data/packet-data/`; Phase 2 reads them by path via
   `config.py`.

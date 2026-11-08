@@ -135,7 +135,7 @@ no model grades itself on a different rule. The table is the flow-level sample
 engineered blocks: the 23 connection-window context features and the three
 Task 3.1 anomaly columns.
 
-**Multi-flow context features.** Brute force, XSS and DNS spoofing are multi-flow
+**The context features span multiple flows.** Brute force, XSS and DNS spoofing are multi-flow
 phenomena: a single password-guessing connection is indistinguishable from a
 single normal login, so per-flow models plateau on those classes. 23 causal
 connection-window features (`build_context_features.py`) follow the KDD'99
@@ -169,7 +169,7 @@ property of this specific benign/attack sample, not a bug in how these features
 are built, read the recall gain as the honest headline for what context adds,
 not the PR-AUC gain.
 
-**Task 3.1 ablation across every model.** The three anomaly columns carried over
+**The Task 3.1 ablation covers every model.** The three anomaly columns carried over
 from stage one sit high in the XGBoost gain ranking, which reads as stage one
 carrying the classifier. `train_models.py --drop-anomaly` and
 `xgboost.py --drop-anomaly` retrain every model with those columns removed and
@@ -178,13 +178,13 @@ barely move; only the weak linear and neural baselines lose several points. So
 the columns carry signal, but it is signal a strong learner already recovers from
 the flow and context features on its own.
 
-**Neyman–Pearson operating point + Clopper–Pearson allowance.** The brief fixes
+**The operating point follows Neyman–Pearson with a Clopper–Pearson allowance.** The brief fixes
 FPR ≤ 1% as a hard constraint, so the threshold maximises recall subject to that
 constraint (`evaluation.py`). The permitted false-positive count is the largest
 whose Clopper–Pearson 99% upper bound still sits inside 1%, so the budget holds on
 test, not only on the validation sample it was tuned on.
 
-**Two-stage system (`two_stage_system.py`).** The combined cascade re-checks the
+**The two-stage system lives in `two_stage_system.py`.** The combined cascade re-checks the
 autoencoder's alerts with stage 2 and calls an item an attack only if stage 1
 alerts it *and* stage 2 confirms it, then reports overall accuracy, precision,
 recall and the false-positive reduction versus Phase 2. Stage 2 is the

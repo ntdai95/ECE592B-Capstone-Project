@@ -1,6 +1,6 @@
-# Phase 2 — Run Guide
+# Phase 2, Run Guide
 
-Step-by-step instructions to run Phase 2 (`Phase_2/` package). All commands are
+This guide gives step-by-step instructions for running Phase 2 (`Phase_2/` package). All commands are
 run **from the repository root** (`ECE592B-Capstone-Project/`).
 
 ---
@@ -116,7 +116,7 @@ Console output prints each model's AUC/PR-AUC and both operating points, then th
 mean ± std summary. Representative full-data numbers from a full re-run against a
 freshly downloaded copy of the dataset (30 Aug 2026, 5 seeds): Anomal-E ≈ 0.64 AUC,
 Deep SVDD ≈ 0.68, fusion ≈ 0.70. These move with the specific dataset download and
-random sample drawn — see the top-level README's reproducibility notes.
+random sample drawn, see the top-level README's reproducibility notes.
 
 ---
 
@@ -163,4 +163,4 @@ you are starting from a clean Python without torch.
 | Matplotlib cache / permission warnings | Default matplotlib cache dir unwritable. | Set `MPLCONFIGDIR="$PWD/.mplcache"` as shown above (or pass `--no-figures`). |
 | `No space left on device` / write failures | Disk is near 100% full. | Clear space; the input CSVs alone are ~800 MB. |
 | GNN (`anomal_e`) slow (~60–75 s/seed) or high RAM | Full-graph message passing is inherently heavier. | Expected; use `--quick` for fast iteration. `max_mp_edges` (in `anomal_e.py`) caps message-passing edges. |
-| GNN AUC noticeably lower under `--quick` | Subsampling thins the communication graph, weakening topology signal. | Expected — use the full dataset for reportable GNN numbers. |
+| GNN AUC noticeably lower under `--quick` | Subsampling thins the communication graph, weakening topology signal. | Expected, use the full dataset for reportable GNN numbers. |
