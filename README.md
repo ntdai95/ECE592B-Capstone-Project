@@ -78,9 +78,9 @@ first is not the model's ranking but its calibration.
 
 Benign traffic in IoT-DIAD was recorded only on 2022-10-07/08, while each attack
 class occupies its own separate capture days. A model can therefore score well by
-recognising the capture session rather than the attack, the FPR blowout below is
+recognising the capture session instead of the attack, the FPR blowout below is
 the direct evidence: the same threshold that holds 1% FPR on one benign day costs
-25–29% on another.
+25 to 29% on another.
 
 `eval_session_holdout.py` now makes the binary objective explicit and writes the
 model-identified artifact `session_holdout_binary_xgb_results.json`. Its four
@@ -108,7 +108,7 @@ cost. The two conditions that hold their budget (C3, C2) are exactly the two
 where benign traffic is split randomly; both that blow it (C1, C0) are the ones
 where the benign capture day changes. For a deployed sensor that is the more
 serious failure: the model still ranks attacks above benign, but the threshold
-that bought 1% FPR on one day costs 25–29% on the next.
+that bought 1% FPR on one day costs 25 to 29% on the next.
 
 Even the random-split result must not be reported alone; the session-disjoint
 result is the stronger test of generalisation.
@@ -172,7 +172,7 @@ the flow and context features on its own.
 FPR ≤ 1% as a hard constraint, so the threshold maximises recall subject to that
 constraint (`evaluation.py`). The permitted false-positive count is the largest
 whose Clopper–Pearson 99% upper bound still sits inside 1%, so the budget holds on
-test rather than only on the validation sample it was tuned on.
+test, not only on the validation sample it was tuned on.
 
 **Two-stage system (`two_stage_system.py`).** The combined cascade re-checks the
 autoencoder's alerts with stage 2 and calls an item an attack only if stage 1
@@ -309,7 +309,7 @@ Preprocessing is fitted on the training split only, median imputation over the
 whole dataset before splitting would leak test information into preprocessing.
 The base-features and base+context runs use the same split, seed and protocol, so
 the feature-set comparison is like for like, and both are produced in one run by
-`exp_context.py` rather than carried forward from an earlier version.
+`exp_context.py` instead of carried forward from an earlier version.
 
 ---
 
