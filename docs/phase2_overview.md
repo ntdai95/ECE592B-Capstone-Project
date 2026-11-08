@@ -106,7 +106,7 @@ is fit on train edges only, with the threshold chosen on validation.
 
 ## 4. Relationship to Phase 1
 
-- **Coupling is a file-artifact contract only, there is no Python import between
+- **Coupling is a file-artifact contract only: there is no Python import between
   the phases.** Phase 1 (`Phase_1/data_preprocessing_packet.py`) writes the three
   CSVs into `data/processed_data/packet-data/`; Phase 2 reads them by path via
   `config.py`.

@@ -1,6 +1,6 @@
 # Multi-Stage IoT Intrusion Detection System
 
-A two-stage IDS evaluated on **CIC IoT-DIAD 2024**. Stage one is unsupervised
+This project is a two-stage IDS evaluated on **CIC IoT-DIAD 2024**. Stage one is unsupervised
 anomaly detection at the packet level; stage two is a supervised flow-level
 classifier that consumes the stage-one anomaly score as a feature.
 
@@ -82,8 +82,7 @@ first is not the model's ranking but its calibration.
 ## The capture-session caveat
 
 Benign traffic in IoT-DIAD was recorded only on 2022-10-07/08, while each attack
-class occupies its own separate capture days. A model can therefore score well by
-recognising the capture session instead of the attack, the FPR blowout below is
+class occupies its own separate capture days. A model can therefore score well by recognising the capture session instead of the attack. The FPR blowout below is
 the direct evidence: the same threshold that holds 1% FPR on one benign day costs
 25 to 29% on another.
 
@@ -127,7 +126,7 @@ result is the stronger test of generalisation.
 
 ## What makes this pipeline different
 
-**One shared, altered dataset for all six models.** Every model, the multiclass
+**One shared, altered dataset backs all six models.** Every model, the multiclass
 signature detector and the five binary classifiers, trains on the same feature
 table and the same stratified 60/20/20 split, so they are directly comparable and
 no model grades itself on a different rule. The table is the flow-level sample
@@ -158,15 +157,13 @@ vs base + context, under both split regimes:
 Recall improves substantially under both regimes (+29.2 points random, +37.2
 points session-disjoint), but the PR-AUC gain this run is concentrated in the
 random split. That is a different picture from an earlier run of this pipeline,
-where the honest-split PR-AUC gain exceeded the random-split one, the strongest
-form of the "not leakage" argument does not hold on this draw of the dataset, and
+where the honest-split PR-AUC gain exceeded the random-split one. The strongest form of the "not leakage" argument does not hold on this draw of the dataset, and
 this README will not claim it does. What still holds: `verify_context_integrity.py`
 audits the builder itself as causal (rebuilding after truncating the capture at
 60% leaves earlier flows' features bit-identical) and label-free (it reads only
 Flow ID, IP, port and timestamp, never the label column), so the computation is
 not leaking future or label information. The capture-session confound above is a
-property of this specific benign/attack sample, not a bug in how these features
-are built, read the recall gain as the honest headline for what context adds,
+property of this specific benign/attack sample, not a bug in how these features are built. Read the recall gain as the honest headline for what context adds,
 not the PR-AUC gain.
 
 **The Task 3.1 ablation covers every model.** The three anomaly columns carried over
@@ -312,11 +309,9 @@ high 90s, and the capture-session PR-AUC gap widened). Phase 1's random,
 seeded packet sample matched a prior run's counts exactly, so the packet-level
 captures are stable; the flow-level `.pcap_Flow.csv` exports are a separate
 download from CIC and are the more likely source of the difference. The
-integrity audit (causality, label-free, FPR budget) passes either way, what
-moves is the data, not the method.
+integrity audit (causality, label-free, FPR budget) passes either way. What moves is the data, not the method.
 
-Preprocessing is fitted on the training split only, median imputation over the
-whole dataset before splitting would leak test information into preprocessing.
+Preprocessing is fitted on the training split only. Median imputation over the whole dataset before splitting would leak test information into preprocessing.
 The base-features and base+context runs use the same split, seed and protocol, so
 the feature-set comparison is like for like, and both are produced in one run by
 `exp_context.py` instead of carried forward from an earlier version.

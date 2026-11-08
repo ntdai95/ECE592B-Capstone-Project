@@ -116,7 +116,7 @@ Console output prints each model's AUC/PR-AUC and both operating points, then th
 mean ± std summary. Representative full-data numbers from a full re-run against a
 freshly downloaded copy of the dataset (30 Aug 2026, 5 seeds): Anomal-E ≈ 0.64 AUC,
 Deep SVDD ≈ 0.68, fusion ≈ 0.70. These move with the specific dataset download and
-random sample drawn, see the top-level README's reproducibility notes.
+random sample drawn. See the top-level README's reproducibility notes.
 
 ---
 
