@@ -52,6 +52,11 @@ and are retained only to make the effect of the correction explicit:
 | 5. Neural Network (MLP) | 0.7615 | 0.7879 | 0.8942 | 0.9630 | 0.8225 | 0.8667 | 0.84% | 0.81% | 0.8825 | 0.9681 |
 | 6. Linear SVM | 0.6204 | 0.6783 | 0.4617 | 0.5059 | 0.5294 | 0.5796 | 0.85% | 0.75% | 0.5824 | 0.6622 |
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/leaderboard-dark.png">
+  <img alt="Recall, precision and PR-AUC for the six models on the clean split" src="docs/figures/leaderboard-light.png">
+</picture>
+
 The former results were invalid because imputation and outlier removal used the
 label before splitting, and scaling was fit on the full dataset. Four of the six
 clean models exceed 90% recall, and all six held-out FPRs remain below 1%.
@@ -92,6 +97,11 @@ conditions are:
 | C1 benign shift | benign **by day**, attacks random | 0.4848 | 98.61% | **28.80%** |
 | C2 attack shift | benign random, attacks **by day** | 0.9637 | 94.25% | 0.83% |
 | **C0 honest** | benign **by day**, attacks **by day** | **0.1250** | 95.25% | **25.35%** |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/session-collapse-dark.png">
+  <img alt="PR-AUC and false positive rate across the four capture-session conditions" src="docs/figures/session-collapse-light.png">
+</picture>
 
 The retained legacy `session_holdout_results.json` contains the same values
 previously cited as multiclass. The explicit binary rerun matches all of its
