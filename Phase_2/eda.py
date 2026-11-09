@@ -25,7 +25,7 @@ def data_quality_report(feature_set):
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
     X = ds.X
-    print(f"\n{'=' * 70}\n[1] DATA QUALITY — {feature_set}: "
+    print(f"\n{'=' * 70}\n[1] DATA QUALITY, {feature_set}: "
           f"{X.shape[0]} rows x {X.shape[1]} features\n{'=' * 70}")
     print(f"global  min={X.min():.4f}  max={X.max():.4f}  mean={X.mean():.4f}  "
           f"std={X.std():.4f}")
@@ -51,7 +51,7 @@ def detectability_report(feature_set, benign_sample=20000, seed=0):
     df = load_feature_table(feature_set)
     ds = to_dataset(df)
     rng = np.random.default_rng(seed)
-    print(f"\n{'=' * 70}\n[2] DETECTABILITY (single-feature ROC-AUC vs benign) — "
+    print(f"\n{'=' * 70}\n[2] DETECTABILITY (single-feature ROC-AUC vs benign), "
           f"{feature_set}\n{'=' * 70}")
     print("Per attack: how separable is it from benign using the BEST single "
           "feature?\n(AUC≈1.0 => trivially detectable; AUC≈0.5 => invisible to "
@@ -88,7 +88,7 @@ def dimensionality_report(feature_set, sample=40000, seed=0):
     X = StandardScaler().fit_transform(ds.X[idx])
     p = PCA(n_components=min(X.shape[1], 100), random_state=seed).fit(X)
     cum = np.cumsum(p.explained_variance_ratio_)
-    print(f"\n{'=' * 70}\n[3] DIMENSIONALITY (PCA on standardized features) — "
+    print(f"\n{'=' * 70}\n[3] DIMENSIONALITY (PCA on standardized features), "
           f"{feature_set}\n{'=' * 70}")
     for thr in (0.90, 0.95, 0.99):
         k = int(np.searchsorted(cum, thr) + 1)
@@ -101,7 +101,7 @@ def topology_report():
     ids = pd.read_csv(C.IDS_CSV)
     labels = load_feature_table("normalized")[[C.ID_COL, C.LABEL_COL]]
     g = ids.merge(labels, on=C.ID_COL, how="inner")
-    print(f"\n{'=' * 70}\n[4] GRAPH TOPOLOGY — {len(g)} packets\n{'=' * 70}")
+    print(f"\n{'=' * 70}\n[4] GRAPH TOPOLOGY, {len(g)} packets\n{'=' * 70}")
 
     nodes = pd.unique(pd.concat([g["src_ip"], g["dst_ip"]], ignore_index=True))
     pairs = g.groupby(["src_ip", "dst_ip"]).size()

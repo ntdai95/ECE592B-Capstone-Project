@@ -29,14 +29,14 @@ def plot_roc(scores, y_bin, title, name):
     fig, ax = plt.subplots(figsize=(5, 5))
     RocCurveDisplay.from_predictions(y_bin, scores, ax=ax, name=title)
     ax.plot([0, 1], [0, 1], "k--", lw=0.8, alpha=0.6)
-    ax.set_title(f"ROC — {title}")
+    ax.set_title(f"ROC, {title}")
     return _save(fig, name)
 
 
 def plot_pr(scores, y_bin, title, name):
     fig, ax = plt.subplots(figsize=(5, 5))
     PrecisionRecallDisplay.from_predictions(y_bin, scores, ax=ax, name=title)
-    ax.set_title(f"Precision–Recall — {title}")
+    ax.set_title(f"Precision–Recall, {title}")
     return _save(fig, name)
 
 
@@ -45,7 +45,7 @@ def plot_confusion(cm, title, name):
     ConfusionMatrixDisplay(cm, display_labels=["benign", "attack"]).plot(
         ax=ax, cmap="Blues", colorbar=False
     )
-    ax.set_title(f"Confusion — {title}")
+    ax.set_title(f"Confusion, {title}")
     return _save(fig, name)
 
 
@@ -56,7 +56,7 @@ def plot_per_attack_dr(per_attack_dr, title, name):
     bars = ax.bar(atks, vals, color="#c0392b")
     ax.set_ylim(0, 1.0)
     ax.set_ylabel("Detection rate")
-    ax.set_title(f"Per-attack detection rate — {title}")
+    ax.set_title(f"Per-attack detection rate, {title}")
     ax.tick_params(axis="x", rotation=30)
     for b, v in zip(bars, vals):
         ax.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.2f}", ha="center", fontsize=8)
@@ -94,6 +94,6 @@ def plot_embedding(emb, y_multi, title, name, method="umap", max_points=8000):
             ax.scatter(E2[m, 0], E2[m, 1], s=6, c=col, label=cls, alpha=0.6,
                        edgecolors="none")
     ax.legend(markerscale=2, fontsize=8, loc="best")
-    ax.set_title(f"{method.upper()} of embeddings — {title}")
+    ax.set_title(f"{method.upper()} of embeddings, {title}")
     ax.set_xticks([]); ax.set_yticks([])
     return _save(fig, name)

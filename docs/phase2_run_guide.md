@@ -37,7 +37,7 @@ If `.venv/` does not exist yet, create it (see §5).
 
 ---
 
-## 2. Quick start (smoke test, ~1–2 min)
+## 2. Quick start (smoke test, ~1 to 2 min)
 
 Confirms everything works on a 20k-row stratified subsample, one seed, no figures:
 
@@ -162,5 +162,5 @@ you are starting from a clean Python without torch.
 | `ModuleNotFoundError: torch` / `torch_geometric` / `pyod` | Wrong interpreter (bare system Python instead of the project venv). | Use `.venv/Scripts/python.exe` (build it via §5 if missing). |
 | Matplotlib cache / permission warnings | Default matplotlib cache dir unwritable. | Set `MPLCONFIGDIR="$PWD/.mplcache"` as shown above (or pass `--no-figures`). |
 | `No space left on device` / write failures | Disk is near 100% full. | Clear space; the input CSVs alone are ~800 MB. |
-| GNN (`anomal_e`) slow (~60–75 s/seed) or high RAM | Full-graph message passing is inherently heavier. | Expected; use `--quick` for fast iteration. `max_mp_edges` (in `anomal_e.py`) caps message-passing edges. |
+| GNN (`anomal_e`) slow (~60 to 75 s/seed) or high RAM | Full-graph message passing is inherently heavier. | Expected; use `--quick` for fast iteration. `max_mp_edges` (in `anomal_e.py`) caps message-passing edges. |
 | GNN AUC noticeably lower under `--quick` | Subsampling thins the communication graph, weakening topology signal. | Expected, use the full dataset for reportable GNN numbers. |
