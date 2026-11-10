@@ -1,4 +1,4 @@
-# Multi-Stage IoT Intrusion Detection System
+# Multi-Stage IoT Intrusion Detection
 
 This project is a two-stage IDS evaluated on **CIC IoT-DIAD 2024**. Stage one is unsupervised
 anomaly detection at the packet level; stage two is a supervised flow-level
