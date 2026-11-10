@@ -4,6 +4,10 @@ This graduate capstone was completed by a team of seven. It is a two-stage IDS e
 anomaly detection at the packet level; stage two is a supervised flow-level
 classifier that consumes the stage-one anomaly score as a feature.
 
+Binary XGBoost reached 99.5% recall at a 0.94% false positive rate under the 1%
+budget. A capture-session-disjoint holdout then exposed benchmark leakage: PR-AUC
+fell from 0.981 to 0.125 while the false positive rate rose to 25.35%.
+
 The whole project runs from a single entry point, `main.py`, which sequences
 Phase 1 (packet preprocessing), Phase 2 (unsupervised packet detection) and
 Phase 3 (supervised flow classification and its validity analysis).
@@ -105,7 +109,7 @@ conditions are:
 The retained legacy `session_holdout_results.json` contains the same values
 previously cited as multiclass. The explicit binary rerun matches all of its
 condition metrics, counts, per-attack detection rates, and per-class AUCs
-exactly. Moreover, repository history shows that the evaluator already formed a
+exactly. Repository history also shows that the evaluator already formed a
 binary target and trained a binary classifier. The legacy file therefore cannot
 serve as independent evidence of a multiclass holdout; a separate multiclass
 four-condition run is **not verified** and its values must not be contrasted
