@@ -1,6 +1,6 @@
 # Multi-Stage IoT Intrusion Detection
 
-This graduate capstone was completed by a team of seven. It is a two-stage IDS evaluated on **CIC IoT-DIAD 2024**. Stage one is unsupervised
+This graduate capstone was completed by a team of seven for Capstone Project (ECE 592B) at the University of Victoria. It is a two-stage IDS evaluated on **CIC IoT-DIAD 2024**. Stage one is unsupervised
 anomaly detection at the packet level; stage two is a supervised flow-level
 classifier that consumes the stage-one anomaly score as a feature.
 
